@@ -3,16 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>视频列表</title>
+  <title>电影院</title>
   <style>
     :root {
-      --bg: #0d1117;
-      --card: #161b22;
-      --border: #30363d;
-      --text: #e6edf3;
-      --muted: #8b949e;
-      --accent: #2f81f7;
-      --radius: 10px;
+      --bg: #050505;
+      --surface: #111;
+      --card: #161616;
+      --border: #2a2a2a;
+      --text: #f0f0f0;
+      --muted: #777;
+      --accent: #e50914;
+      --radius: 8px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,367 +23,720 @@
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      padding: 24px 16px 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 12px 40px;
     }
 
-    .header {
-      max-width: 1100px;
-      margin: 0 auto 28px;
-      text-align: center;
+    .toolbar {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
     }
 
-    .header h1 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .header p {
-      color: var(--muted);
+    .toolbar input {
+      flex: 1;
+      min-width: 180px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      color: var(--text);
       font-size: 0.9rem;
+      outline: none;
+    }
+
+    .toolbar input:focus { border-color: #555; }
+    .toolbar input::placeholder { color: #555; }
+
+    .toolbar button {
+      border: none;
+      border-radius: var(--radius);
+      padding: 10px 16px;
+      font-size: 0.88rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+      color: #fff;
+    }
+
+    .toolbar .btn-primary { background: var(--accent); }
+    .toolbar .btn-primary:hover { background: #f40612; }
+    .toolbar .btn-secondary { background: #222; border: 1px solid #333; }
+    .toolbar .btn-secondary:hover { background: #333; }
+
+    .screen { width: 100%; max-width: 960px; }
+
+    .bezel {
+      background: #0a0a0a;
+      border: 7px solid #1a1a1a;
+      border-radius: 4px;
+      box-shadow: 0 0 0 2px #2a2a2a, 0 0 36px rgba(229,9,20,0.1), 0 20px 50px rgba(0,0,0,0.7);
+      overflow: hidden;
+    }
+
+    .title-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 14px;
+      background: linear-gradient(#1a1a1a, #111);
+      border-bottom: 1px solid #222;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .title-bar .now {
+      color: var(--text);
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .stage {
+      position: relative;
+      background: #000;
+      aspect-ratio: 16 / 9;
+    }
+
+    .stage video,
+    .stage iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: none;
+      background: #000;
+    }
+
+    .stage .placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #444;
+      font-size: 0.88rem;
+    }
+
+    .stage .placeholder svg {
+      width: 48px;
+      height: 48px;
+      opacity: 0.35;
+    }
+
+    .progress-area {
+      padding: 0 14px 6px;
+      background: #111;
+      display: none;
+    }
+
+    .progress-area.show { display: block; }
+
+    .progress-bar {
+      height: 4px;
+      background: #333;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    .progress-bar:hover { height: 5px; }
+
+    .progress-filled {
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    .time-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 10px 16px 14px;
+      background: linear-gradient(#111, #1a1a1a);
+      border-top: 1px solid #222;
+    }
+
+    .controls button {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid #333;
+      background: #222;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .controls button:hover { background: #333; }
+    .controls button:active { transform: scale(0.94); }
+    .controls button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .controls .play {
+      width: 56px;
+      height: 56px;
+      background: var(--accent);
+      border-color: var(--accent);
+      font-size: 1.25rem;
+    }
+
+    .controls .play:hover { background: #f40612; }
+
+    .hint {
+      margin-top: 10px;
+      text-align: center;
+      color: #3a3a3a;
+      font-size: 0.7rem;
+    }
+
+    .list-panel {
+      width: 100%;
+      max-width: 960px;
+      margin-top: 18px;
+      display: none;
+    }
+
+    .list-panel.open { display: block; }
+
+    .list-panel h3 {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+      font-weight: 500;
     }
 
     .grid {
-      max-width: 1100px;
-      margin: 0 auto;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 18px;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
     }
 
     .card {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: 6px;
       overflow: hidden;
       cursor: pointer;
-      transition: border-color 0.15s, transform 0.15s;
+      transition: border-color 0.15s;
     }
 
-    .card:hover {
-      border-color: var(--accent);
-      transform: translateY(-2px);
-    }
+    .card:hover,
+    .card.active { border-color: var(--accent); }
 
-    .thumb {
+    .card .thumb {
       position: relative;
       aspect-ratio: 16 / 9;
       background: #000;
-      overflow: hidden;
     }
 
-    .thumb img {
+    .card .thumb img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
 
-    .thumb .play-icon {
+    .card .thumb .num {
       position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,0.35);
-      opacity: 0;
-      transition: opacity 0.15s;
-    }
-
-    .card:hover .play-icon {
-      opacity: 1;
-    }
-
-    .play-icon svg {
-      width: 48px;
-      height: 48px;
-      fill: #fff;
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
-    }
-
-    .info {
-      padding: 12px 14px;
-    }
-
-    .info .name {
-      font-size: 0.92rem;
-      font-weight: 500;
-    }
-
-    .info .meta {
-      font-size: 0.78rem;
-      color: var(--muted);
-      margin-top: 4px;
-    }
-
-    /* 播放弹层 */
-    .modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.85);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      padding: 16px;
-    }
-
-    .modal.open {
-      display: flex;
-    }
-
-    .modal-content {
-      width: 100%;
-      max-width: 900px;
-      background: #000;
-      border-radius: var(--radius);
-      overflow: hidden;
-      position: relative;
-    }
-
-    .modal video {
-      width: 100%;
-      display: block;
-      max-height: 80vh;
-      background: #000;
-    }
-
-    .modal-close {
-      position: absolute;
-      top: 10px;
-      right: 12px;
-      width: 36px;
-      height: 36px;
-      border: none;
-      border-radius: 50%;
-      background: rgba(0,0,0,0.6);
+      top: 3px;
+      left: 3px;
+      background: rgba(0,0,0,0.7);
       color: #fff;
-      font-size: 1.3rem;
-      cursor: pointer;
-      z-index: 2;
-      line-height: 1;
+      font-size: 0.65rem;
+      padding: 1px 5px;
+      border-radius: 3px;
     }
 
-    .modal-close:hover {
-      background: rgba(0,0,0,0.85);
-    }
-
-    .modal-title {
-      padding: 10px 16px;
-      background: var(--card);
-      font-size: 0.9rem;
-      color: var(--muted);
-      border-top: 1px solid var(--border);
+    .card .name {
+      padding: 5px 7px;
+      font-size: 0.75rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .status {
-      max-width: 1100px;
-      margin: 0 auto 20px;
-      text-align: center;
+      margin-top: 8px;
+      font-size: 0.78rem;
       color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    .empty {
-      grid-column: 1 / -1;
       text-align: center;
-      color: var(--muted);
-      padding: 48px 16px;
-      font-size: 0.95rem;
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>视频列表</h1>
-    <p>自动检测 1.mp4 ~ 56.mp4</p>
+
+  <div class="toolbar">
+    <input type="url" id="urlInput" placeholder="粘贴 YouTube 链接，或留空播放本地视频" />
+    <button class="btn-primary" id="playUrlBtn">播放链接</button>
+    <button class="btn-secondary" id="toggleListBtn">本地列表</button>
   </div>
 
-  <div class="status" id="status">正在扫描视频…</div>
-  <div class="grid" id="grid"></div>
+  <div class="screen">
+    <div class="bezel">
+      <div class="title-bar">
+        <span class="now" id="nowPlaying">准备播放</span>
+      </div>
 
-  <!-- 播放弹层 -->
-  <div class="modal" id="modal">
-    <div class="modal-content">
-      <button class="modal-close" id="closeBtn" title="关闭">×</button>
-      <video id="player" controls playsinline></video>
-      <div class="modal-title" id="modalTitle"></div>
+      <div class="stage" id="stage">
+        <video id="player" playsinline></video>
+        <iframe id="ytFrame" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        <div class="placeholder" id="placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          <span>选择本地视频或粘贴 YouTube 链接</span>
+        </div>
+      </div>
+
+      <div class="progress-area" id="progressArea">
+        <div class="progress-bar" id="progressBar">
+          <div class="progress-filled" id="progressFilled"></div>
+        </div>
+        <div class="time-row">
+          <span id="currentTime">0:00</span>
+          <span id="duration">0:00</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="prevBtn" title="上一个 (←)" disabled>⏮</button>
+        <button class="play" id="playBtn" title="播放/暂停 (空格)">▶</button>
+        <button id="nextBtn" title="下一个 (→)" disabled>⏭</button>
+      </div>
     </div>
+    <div class="hint">空格 播放/暂停 · ← → 切换本地视频</div>
+  </div>
+
+  <div class="list-panel" id="listPanel">
+    <h3>本地视频（1.mp4 ~ 56.mp4）</h3>
+    <div class="grid" id="grid"></div>
+    <div class="status" id="status"></div>
   </div>
 
   <script>
-    const MAX = 56;          // 扫描范围 1 ~ 56
-    const grid = document.getElementById('grid');
-    const status = document.getElementById('status');
-    const modal = document.getElementById('modal');
-    const player = document.getElementById('player');
-    const modalTitle = document.getElementById('modalTitle');
-    const closeBtn = document.getElementById('closeBtn');
+    (() => {
+      const MAX = 56;
+      const DB_NAME = 'cinema_db';
+      const DB_VER = 1;
+      const THUMB_MAX_W = 320;
+      const THUMB_QUALITY = 0.55;
 
-    // 检查某个 mp4 是否存在
-    function checkVideoExists(src) {
-      return new Promise((resolve) => {
+      const $ = id => document.getElementById(id);
+      const urlInput = $('urlInput');
+      const playUrlBtn = $('playUrlBtn');
+      const toggleListBtn = $('toggleListBtn');
+      const listPanel = $('listPanel');
+      const grid = $('grid');
+      const status = $('status');
+      const player = $('player');
+      const ytFrame = $('ytFrame');
+      const placeholder = $('placeholder');
+      const nowPlaying = $('nowPlaying');
+      const playBtn = $('playBtn');
+      const prevBtn = $('prevBtn');
+      const nextBtn = $('nextBtn');
+      const progressArea = $('progressArea');
+      const progressBar = $('progressBar');
+      const progressFilled = $('progressFilled');
+      const currentTimeEl = $('currentTime');
+      const durationEl = $('duration');
+
+      let videoList = [];
+      let currentIndex = -1;
+      let mode = null;
+      const captured = new Set();
+      let db = null;
+
+      // ========== IndexedDB ==========
+      function openDB() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(DB_NAME, DB_VER);
+          req.onupgradeneeded = e => {
+            const database = e.target.result;
+            if (!database.objectStoreNames.contains('thumbs')) {
+              database.createObjectStore('thumbs'); // key = filename
+            }
+            if (!database.objectStoreNames.contains('state')) {
+              database.createObjectStore('state'); // key = 'playback'
+            }
+          };
+          req.onsuccess = e => resolve(e.target.result);
+          req.onerror = e => reject(e.target.error);
+        });
+      }
+
+      function idbGet(store, key) {
+        return new Promise((resolve, reject) => {
+          if (!db) return resolve(null);
+          const tx = db.transaction(store, 'readonly');
+          const req = tx.objectStore(store).get(key);
+          req.onsuccess = () => resolve(req.result ?? null);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      function idbSet(store, key, value) {
+        return new Promise((resolve, reject) => {
+          if (!db) return resolve();
+          const tx = db.transaction(store, 'readwrite');
+          const req = tx.objectStore(store).put(value, key);
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      // 缩略图：存 Blob，读出来转 ObjectURL
+      async function getThumb(name) {
+        try {
+          const blob = await idbGet('thumbs', name);
+          if (!blob) return null;
+          return URL.createObjectURL(blob);
+        } catch {
+          return null;
+        }
+      }
+
+      async function saveThumb(name, dataUrl) {
+        try {
+          // dataURL → Blob，比直接存字符串更省空间
+          const res = await fetch(dataUrl);
+          const blob = await res.blob();
+          await idbSet('thumbs', name, blob);
+        } catch (e) {
+          console.warn('saveThumb failed', e);
+        }
+      }
+
+      async function saveState() {
+        if (mode !== 'local' || currentIndex < 0) return;
+        try {
+          await idbSet('state', 'playback', {
+            file: videoList[currentIndex],
+            time: player.currentTime || 0
+          });
+        } catch {}
+      }
+
+      async function loadState() {
+        try {
+          return await idbGet('state', 'playback');
+        } catch {
+          return null;
+        }
+      }
+
+      // ========== 工具 ==========
+      const fmt = sec => {
+        if (!isFinite(sec)) return '0:00';
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        return m + ':' + String(s).padStart(2, '0');
+      };
+
+      const ytId = url => {
+        if (!url) return null;
+        const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+        return m ? m[1] : null;
+      };
+
+      // ========== 截图 ==========
+      const capture = () => {
+        try {
+          if (!player.videoWidth) return null;
+          const scale = Math.min(1, THUMB_MAX_W / player.videoWidth);
+          const w = Math.round(player.videoWidth * scale);
+          const h = Math.round(player.videoHeight * scale);
+          const c = document.createElement('canvas');
+          c.width = w;
+          c.height = h;
+          c.getContext('2d').drawImage(player, 0, 0, w, h);
+          return c.toDataURL('image/jpeg', THUMB_QUALITY);
+        } catch {
+          return null;
+        }
+      };
+
+      const tryCapture = async () => {
+        if (mode !== 'local' || currentIndex < 0) return;
+        const name = videoList[currentIndex];
+        if (captured.has(name)) return;
+        if (player.currentTime < 0.8) return;
+
+        // 先标记，避免并发重复截
+        captured.add(name);
+        const dataUrl = capture();
+        if (!dataUrl) {
+          captured.delete(name);
+          return;
+        }
+
+        await saveThumb(name, dataUrl);
+
+        // 更新卡片缩略图
+        const card = grid.querySelector(`[data-file="${name}"]`);
+        if (!card) return;
+        const thumb = card.querySelector('.thumb');
+        let img = thumb.querySelector('img');
+        if (!img) {
+          const ph = thumb.querySelector('.ph');
+          if (ph) ph.remove();
+          img = document.createElement('img');
+          thumb.insertBefore(img, thumb.querySelector('.num'));
+        }
+        // 用 Blob URL 显示
+        const url = await getThumb(name);
+        if (url) img.src = url;
+      };
+
+      // ========== 显示切换 ==========
+      const hideAll = () => {
+        player.style.display = 'none';
+        ytFrame.style.display = 'none';
+        placeholder.style.display = 'none';
+      };
+
+      const showLocal = () => {
+        hideAll();
+        player.style.display = 'block';
+        progressArea.classList.add('show');
+        mode = 'local';
+      };
+
+      const showYT = id => {
+        player.pause();
+        player.removeAttribute('src');
+        player.load();
+        hideAll();
+        progressArea.classList.remove('show');
+        ytFrame.style.display = 'block';
+        ytFrame.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+        mode = 'youtube';
+        currentIndex = -1;
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        playBtn.textContent = '▶';
+        grid.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+      };
+
+      // ========== 本地播放 ==========
+      const openLocal = (index, restoreTime) => {
+        if (index < 0 || index >= videoList.length) return;
+        currentIndex = index;
+        const file = videoList[index];
+
+        showLocal();
+        player.src = file;
+        nowPlaying.textContent = file;
+        prevBtn.disabled = index <= 0;
+        nextBtn.disabled = index >= videoList.length - 1;
+
+        grid.querySelectorAll('.card').forEach(c => {
+          c.classList.toggle('active', c.dataset.file === file);
+        });
+
+        const onMeta = () => {
+          player.removeEventListener('loadedmetadata', onMeta);
+          if (typeof restoreTime === 'number' && restoreTime > 0 && restoreTime < player.duration) {
+            player.currentTime = restoreTime;
+          }
+          player.play().catch(() => {});
+        };
+        player.addEventListener('loadedmetadata', onMeta);
+      };
+
+      const togglePlay = () => {
+        if (mode !== 'local') return;
+        player.paused ? player.play().catch(() => {}) : player.pause();
+      };
+
+      const playPrev = () => {
+        if (currentIndex > 0) {
+          saveState();
+          openLocal(currentIndex - 1);
+        }
+      };
+
+      const playNext = () => {
+        if (currentIndex < videoList.length - 1) {
+          saveState();
+          openLocal(currentIndex + 1);
+        }
+      };
+
+      // ========== 卡片 ==========
+      const createCard = async name => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.file = name;
+
+        const thumb = document.createElement('div');
+        thumb.className = 'thumb';
+
+        const cached = await getThumb(name);
+        if (cached) {
+          captured.add(name);
+          const img = document.createElement('img');
+          img.src = cached;
+          thumb.appendChild(img);
+        } else {
+          const ph = document.createElement('div');
+          ph.className = 'ph';
+          ph.style.cssText = 'width:100%;height:100%;background:#0a0a0a;display:flex;align-items:center;justify-content:center;color:#444;font-size:0.68rem;';
+          ph.textContent = '播放后截图';
+          thumb.appendChild(ph);
+        }
+
+        const num = document.createElement('div');
+        num.className = 'num';
+        num.textContent = name.replace(/\.mp4$/i, '');
+        thumb.appendChild(num);
+
+        const label = document.createElement('div');
+        label.className = 'name';
+        label.textContent = name;
+
+        card.append(thumb, label);
+        card.addEventListener('click', () => {
+          const i = videoList.indexOf(name);
+          if (i >= 0) openLocal(i);
+        });
+        return card;
+      };
+
+      // ========== 事件 ==========
+      playUrlBtn.addEventListener('click', () => {
+        const id = ytId(urlInput.value.trim());
+        if (!id) return alert('无法识别 YouTube 链接');
+        nowPlaying.textContent = 'YouTube · ' + id;
+        showYT(id);
+      });
+
+      urlInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') playUrlBtn.click();
+      });
+
+      toggleListBtn.addEventListener('click', () => {
+        const open = listPanel.classList.toggle('open');
+        toggleListBtn.textContent = open ? '收起列表' : '本地列表';
+      });
+
+      playBtn.addEventListener('click', togglePlay);
+      prevBtn.addEventListener('click', playPrev);
+      nextBtn.addEventListener('click', playNext);
+
+      player.addEventListener('play', () => { playBtn.textContent = '⏸'; });
+      player.addEventListener('pause', () => {
+        playBtn.textContent = '▶';
+        saveState();
+        tryCapture();
+      });
+      player.addEventListener('ended', () => {
+        playBtn.textContent = '▶';
+        tryCapture();
+      });
+      player.addEventListener('timeupdate', () => {
+        const pct = player.duration ? (player.currentTime / player.duration) * 100 : 0;
+        progressFilled.style.width = pct + '%';
+        currentTimeEl.textContent = fmt(player.currentTime);
+        tryCapture();
+      });
+      player.addEventListener('loadedmetadata', () => {
+        durationEl.textContent = fmt(player.duration);
+      });
+
+      progressBar.addEventListener('click', e => {
+        if (mode !== 'local') return;
+        const rect = progressBar.getBoundingClientRect();
+        player.currentTime = ((e.clientX - rect.left) / rect.width) * (player.duration || 0);
+      });
+
+      setInterval(saveState, 5000);
+
+      document.addEventListener('keydown', e => {
+        if (e.target.tagName === 'INPUT') return;
+        if (e.key === ' ' || e.key === 'k' || e.key === 'K') {
+          e.preventDefault();
+          togglePlay();
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          playPrev();
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          playNext();
+        }
+      });
+
+      // ========== 扫描 ==========
+      const exists = src => new Promise(resolve => {
         const v = document.createElement('video');
         v.preload = 'metadata';
         v.muted = true;
         v.playsInline = true;
-
-        const done = (ok) => {
+        const done = ok => {
           v.removeAttribute('src');
           v.load();
           resolve(ok);
         };
-
         v.addEventListener('loadedmetadata', () => done(true));
         v.addEventListener('error', () => done(false));
-
-        // 超时也当不存在
-        setTimeout(() => done(false), 4000);
-
+        setTimeout(() => done(false), 3000);
         v.src = src;
       });
-    }
 
-    // 生成缩略图
-    function generateThumbnail(src) {
-      return new Promise((resolve) => {
-        const video = document.createElement('video');
-        video.muted = true;
-        video.preload = 'metadata';
-        video.playsInline = true;
-        video.src = src;
+      (async () => {
+        try {
+          db = await openDB();
+        } catch (e) {
+          console.warn('IndexedDB unavailable', e);
+        }
 
-        const cleanup = () => {
-          video.removeAttribute('src');
-          video.load();
-        };
-
-        video.addEventListener('loadeddata', () => {
-          const t = Math.min(1, (video.duration || 2) * 0.25);
-          video.currentTime = t;
+        const tasks = Array.from({ length: MAX }, (_, i) => {
+          const name = (i + 1) + '.mp4';
+          return exists(name).then(ok => (ok ? name : null));
         });
+        videoList = (await Promise.all(tasks)).filter(Boolean);
 
-        video.addEventListener('seeked', () => {
-          try {
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth || 320;
-            canvas.height = video.videoHeight || 180;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            resolve(canvas.toDataURL('image/jpeg', 0.75));
-          } catch (e) {
-            resolve(null);
-          } finally {
-            cleanup();
-          }
-        });
+        if (!videoList.length) {
+          status.textContent = '未发现本地视频（请命名为 1.mp4 ~ 56.mp4）';
+          return;
+        }
 
-        video.addEventListener('error', () => {
-          cleanup();
-          resolve(null);
-        });
+        status.textContent = '共 ' + videoList.length + ' 个本地视频';
+        grid.innerHTML = '';
 
-        setTimeout(() => {
-          cleanup();
-          resolve(null);
-        }, 6000);
-      });
-    }
+        // 并行创建卡片（读 IndexedDB 缩略图）
+        const cards = await Promise.all(videoList.map(createCard));
+        cards.forEach(c => grid.appendChild(c));
 
-    function createCard(filename, thumbUrl) {
-      const card = document.createElement('div');
-      card.className = 'card';
-
-      const thumb = document.createElement('div');
-      thumb.className = 'thumb';
-
-      if (thumbUrl) {
-        const img = document.createElement('img');
-        img.src = thumbUrl;
-        img.alt = filename;
-        thumb.appendChild(img);
-      } else {
-        const fallback = document.createElement('div');
-        fallback.style.cssText = 'width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#666;font-size:0.85rem;';
-        fallback.textContent = '无预览';
-        thumb.appendChild(fallback);
-      }
-
-      const playIcon = document.createElement('div');
-      playIcon.className = 'play-icon';
-      playIcon.innerHTML = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
-      thumb.appendChild(playIcon);
-
-      const info = document.createElement('div');
-      info.className = 'info';
-      info.innerHTML = `
-        <div class="name">${filename.replace(/\.mp4$/i, '')}</div>
-        <div class="meta">${filename}</div>
-      `;
-
-      card.appendChild(thumb);
-      card.appendChild(info);
-
-      card.addEventListener('click', () => {
-        player.src = filename;
-        modalTitle.textContent = filename;
-        modal.classList.add('open');
-        player.play().catch(() => {});
-      });
-
-      return card;
-    }
-
-    async function scan() {
-      const found = [];
-
-      // 并发检查，加快速度
-      const checks = [];
-      for (let i = 1; i <= MAX; i++) {
-        const name = `${i}.mp4`;
-        checks.push(
-          checkVideoExists(name).then(exists => ({ name, exists }))
-        );
-      }
-
-      const results = await Promise.all(checks);
-      const existing = results.filter(r => r.exists).map(r => r.name);
-
-      if (existing.length === 0) {
-        status.textContent = '未发现任何视频（请把文件命名为 1.mp4、2.mp4 …）';
-        grid.innerHTML = `<div class="empty">把 mp4 重命名为 1.mp4、2.mp4 … 56.mp4<br>放在本目录后刷新即可</div>`;
-        return;
-      }
-
-      status.textContent = `发现 ${existing.length} 个视频，正在生成截图…`;
-
-      // 逐个生成缩略图并显示（边生成边显示）
-      for (const name of existing) {
-        const thumbUrl = await generateThumbnail(name);
-        const card = createCard(name, thumbUrl);
-        grid.appendChild(card);
-      }
-
-      status.textContent = `共 ${existing.length} 个视频`;
-    }
-
-    // 关闭弹层
-    function closeModal() {
-      modal.classList.remove('open');
-      player.pause();
-      player.removeAttribute('src');
-      player.load();
-    }
-
-    closeBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeModal();
-    });
-
-    scan();
+        const state = await loadState();
+        if (state?.file && videoList.includes(state.file)) {
+          openLocal(videoList.indexOf(state.file), state.time);
+        } else {
+          openLocal(0);
+        }
+      })();
+    })();
   </script>
 </body>
 </html>
