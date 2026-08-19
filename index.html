@@ -6,14 +6,17 @@
   <title>电影院</title>
   <style>
     :root {
-      --bg: #050505;
-      --surface: #111;
-      --card: #161616;
-      --border: #2a2a2a;
-      --text: #f0f0f0;
-      --muted: #777;
-      --accent: #e50914;
-      --radius: 8px;
+      --bg: #0a0e14;
+      --surface: #111820;
+      --card: #151c26;
+      --border: #1e2a3a;
+      --text: #d8e1ec;
+      --muted: #6b7c90;
+      --accent: #5b9fd4;
+      --accent-hover: #7bb3de;
+      --gold: #c4a35a;
+      --gold-dim: #8a7340;
+      --radius: 4px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -26,15 +29,16 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 16px 12px 40px;
+      padding: 20px 14px 48px;
     }
 
+    /* 工具栏 */
     .toolbar {
       width: 100%;
-      max-width: 960px;
+      max-width: 900px;
       display: flex;
       gap: 8px;
-      margin-bottom: 14px;
+      margin-bottom: 18px;
       flex-wrap: wrap;
     }
 
@@ -44,38 +48,57 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 10px 14px;
+      padding: 9px 12px;
       color: var(--text);
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       outline: none;
     }
 
-    .toolbar input:focus { border-color: #555; }
-    .toolbar input::placeholder { color: #555; }
+    .toolbar input:focus { border-color: var(--accent); }
+    .toolbar input::placeholder { color: #4a5a6c; }
 
     .toolbar button {
-      border: none;
+      border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 10px 16px;
-      font-size: 0.88rem;
+      padding: 9px 14px;
+      font-size: 0.85rem;
       cursor: pointer;
       white-space: nowrap;
-      transition: background 0.15s;
-      color: #fff;
+      transition: background 0.15s, border-color 0.15s;
+      color: var(--text);
+      background: var(--surface);
     }
 
-    .toolbar .btn-primary { background: var(--accent); }
-    .toolbar .btn-primary:hover { background: #f40612; }
-    .toolbar .btn-secondary { background: #222; border: 1px solid #333; }
-    .toolbar .btn-secondary:hover { background: #333; }
+    .toolbar button:hover {
+      background: #1a2430;
+      border-color: var(--accent);
+    }
 
-    .screen { width: 100%; max-width: 960px; }
+    .toolbar .btn-primary {
+      background: transparent;
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
 
-    .bezel {
-      background: #0a0a0a;
-      border: 7px solid #1a1a1a;
-      border-radius: 4px;
-      box-shadow: 0 0 0 2px #2a2a2a, 0 0 36px rgba(229,9,20,0.1), 0 20px 50px rgba(0,0,0,0.7);
+    .toolbar .btn-primary:hover {
+      border-color: var(--gold);
+      background: rgba(196, 163, 90, 0.08);
+    }
+
+    /* 屏幕外框：细金色边 */
+    .screen-wrap {
+      width: 100%;
+      max-width: 900px;
+      border: 1px solid var(--gold);
+      border-radius: 2px;
+      padding: 3px;
+      background: #0c1016;
+      box-shadow: 0 0 0 1px rgba(196, 163, 90, 0.25);
+    }
+
+    .screen-inner {
+      background: #080c12;
+      border: 1px solid rgba(196, 163, 90, 0.35);
       overflow: hidden;
     }
 
@@ -83,10 +106,10 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 9px 14px;
-      background: linear-gradient(#1a1a1a, #111);
-      border-bottom: 1px solid #222;
-      font-size: 0.85rem;
+      padding: 8px 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
       color: var(--muted);
     }
 
@@ -96,12 +119,23 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      letter-spacing: 0.02em;
+    }
+
+    /* 舞台：固定比例，视频尽量一致大小 */
+    .stage-outer {
+      position: relative;
+      overflow: hidden;
+      background: #000;
     }
 
     .stage {
       position: relative;
-      background: #000;
+      width: 100%;
       aspect-ratio: 16 / 9;
+      background: #000;
+      transform-origin: center center;
+      transition: transform 0.2s ease;
     }
 
     .stage video,
@@ -111,6 +145,7 @@
       border: none;
       display: none;
       background: #000;
+      object-fit: contain; /* 保持比例，尽量占满 */
     }
 
     .stage .placeholder {
@@ -121,128 +156,152 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
-      color: #444;
-      font-size: 0.88rem;
+      color: #3a4a5c;
+      font-size: 0.85rem;
     }
 
     .stage .placeholder svg {
-      width: 48px;
-      height: 48px;
-      opacity: 0.35;
+      width: 44px;
+      height: 44px;
+      opacity: 0.4;
     }
 
+    /* 进度 */
     .progress-area {
-      padding: 0 14px 6px;
-      background: #111;
+      padding: 0 12px 6px;
+      background: var(--surface);
       display: none;
     }
 
     .progress-area.show { display: block; }
 
     .progress-bar {
-      height: 4px;
-      background: #333;
-      border-radius: 2px;
+      height: 3px;
+      background: var(--border);
+      border-radius: 1px;
       cursor: pointer;
     }
 
-    .progress-bar:hover { height: 5px; }
+    .progress-bar:hover { height: 4px; }
 
     .progress-filled {
       height: 100%;
       width: 0;
       background: var(--accent);
-      border-radius: 2px;
+      border-radius: 1px;
     }
 
     .time-row {
       display: flex;
       justify-content: space-between;
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       color: var(--muted);
       margin-top: 4px;
       font-variant-numeric: tabular-nums;
     }
 
+    /* 控制条 */
     .controls {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
-      padding: 10px 16px 14px;
-      background: linear-gradient(#111, #1a1a1a);
-      border-top: 1px solid #222;
+      gap: 10px;
+      padding: 10px 12px 12px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
     }
 
     .controls button {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      border: 1px solid #333;
-      background: #222;
-      color: #fff;
-      font-size: 1rem;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-size: 0.95rem;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.15s, transform 0.1s;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
     }
 
-    .controls button:hover { background: #333; }
+    .controls button:hover {
+      border-color: var(--accent);
+      background: rgba(91, 159, 212, 0.08);
+    }
+
     .controls button:active { transform: scale(0.94); }
-    .controls button:disabled { opacity: 0.3; cursor: not-allowed; }
+    .controls button:disabled {
+      opacity: 0.28;
+      cursor: not-allowed;
+    }
 
     .controls .play {
-      width: 56px;
-      height: 56px;
-      background: var(--accent);
-      border-color: var(--accent);
-      font-size: 1.25rem;
+      width: 48px;
+      height: 48px;
+      border-color: var(--gold-dim);
+      color: var(--gold);
+      font-size: 1.1rem;
     }
 
-    .controls .play:hover { background: #f40612; }
+    .controls .play:hover {
+      border-color: var(--gold);
+      background: rgba(196, 163, 90, 0.1);
+    }
+
+    .controls .zoom-group {
+      display: flex;
+      gap: 6px;
+      margin-left: 8px;
+      padding-left: 12px;
+      border-left: 1px solid var(--border);
+    }
 
     .hint {
       margin-top: 10px;
       text-align: center;
-      color: #3a3a3a;
-      font-size: 0.7rem;
+      color: #2e3c4c;
+      font-size: 0.68rem;
     }
 
+    /* 列表 */
     .list-panel {
       width: 100%;
-      max-width: 960px;
-      margin-top: 18px;
+      max-width: 900px;
+      margin-top: 20px;
       display: none;
     }
 
     .list-panel.open { display: block; }
 
     .list-panel h3 {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--muted);
       margin-bottom: 10px;
       font-weight: 500;
+      letter-spacing: 0.04em;
     }
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
       gap: 10px;
     }
 
     .card {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: var(--radius);
       overflow: hidden;
       cursor: pointer;
       transition: border-color 0.15s;
     }
 
     .card:hover,
-    .card.active { border-color: var(--accent); }
+    .card.active { border-color: var(--gold-dim); }
+
+    .card.active { border-color: var(--gold); }
 
     .card .thumb {
       position: relative;
@@ -261,16 +320,17 @@
       position: absolute;
       top: 3px;
       left: 3px;
-      background: rgba(0,0,0,0.7);
-      color: #fff;
-      font-size: 0.65rem;
+      background: rgba(0,0,0,0.65);
+      color: #ccc;
+      font-size: 0.62rem;
       padding: 1px 5px;
-      border-radius: 3px;
+      border-radius: 2px;
     }
 
     .card .name {
       padding: 5px 7px;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
+      color: var(--muted);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -278,7 +338,7 @@
 
     .status {
       margin-top: 8px;
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       color: var(--muted);
       text-align: center;
     }
@@ -289,23 +349,25 @@
   <div class="toolbar">
     <input type="url" id="urlInput" placeholder="粘贴 YouTube 链接，或留空播放本地视频" />
     <button class="btn-primary" id="playUrlBtn">播放链接</button>
-    <button class="btn-secondary" id="toggleListBtn">本地列表</button>
+    <button id="toggleListBtn">本地列表</button>
   </div>
 
-  <div class="screen">
-    <div class="bezel">
+  <div class="screen-wrap">
+    <div class="screen-inner">
       <div class="title-bar">
         <span class="now" id="nowPlaying">准备播放</span>
       </div>
 
-      <div class="stage" id="stage">
-        <video id="player" playsinline></video>
-        <iframe id="ytFrame" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-        <div class="placeholder" id="placeholder">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-          </svg>
-          <span>选择本地视频或粘贴 YouTube 链接</span>
+      <div class="stage-outer">
+        <div class="stage" id="stage">
+          <video id="player" playsinline></video>
+          <iframe id="ytFrame" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+          <div class="placeholder" id="placeholder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+            <span>选择本地视频或粘贴 YouTube 链接</span>
+          </div>
         </div>
       </div>
 
@@ -323,13 +385,18 @@
         <button id="prevBtn" title="上一个 (←)" disabled>⏮</button>
         <button class="play" id="playBtn" title="播放/暂停 (空格)">▶</button>
         <button id="nextBtn" title="下一个 (→)" disabled>⏭</button>
+        <div class="zoom-group">
+          <button id="zoomOutBtn" title="缩小 (−)">−</button>
+          <button id="zoomInBtn" title="放大 (+)">+</button>
+          <button id="zoomResetBtn" title="重置缩放">1:1</button>
+        </div>
       </div>
     </div>
-    <div class="hint">空格 播放/暂停 · ← → 切换本地视频</div>
   </div>
+  <div class="hint">空格 播放/暂停 · ← → 切换 · + − 缩放</div>
 
   <div class="list-panel" id="listPanel">
-    <h3>本地视频（1.mp4 ~ 56.mp4）</h3>
+    <h3>本地视频 · 1.mp4 ~ 56.mp4</h3>
     <div class="grid" id="grid"></div>
     <div class="status" id="status"></div>
   </div>
@@ -341,6 +408,9 @@
       const DB_VER = 1;
       const THUMB_MAX_W = 320;
       const THUMB_QUALITY = 0.55;
+      const ZOOM_MIN = 0.5;
+      const ZOOM_MAX = 2.5;
+      const ZOOM_STEP = 0.15;
 
       const $ = id => document.getElementById(id);
       const urlInput = $('urlInput');
@@ -361,10 +431,15 @@
       const progressFilled = $('progressFilled');
       const currentTimeEl = $('currentTime');
       const durationEl = $('duration');
+      const stage = $('stage');
+      const zoomInBtn = $('zoomInBtn');
+      const zoomOutBtn = $('zoomOutBtn');
+      const zoomResetBtn = $('zoomResetBtn');
 
       let videoList = [];
       let currentIndex = -1;
       let mode = null;
+      let zoom = 1;
       const captured = new Set();
       let db = null;
 
@@ -374,12 +449,8 @@
           const req = indexedDB.open(DB_NAME, DB_VER);
           req.onupgradeneeded = e => {
             const database = e.target.result;
-            if (!database.objectStoreNames.contains('thumbs')) {
-              database.createObjectStore('thumbs'); // key = filename
-            }
-            if (!database.objectStoreNames.contains('state')) {
-              database.createObjectStore('state'); // key = 'playback'
-            }
+            if (!database.objectStoreNames.contains('thumbs')) database.createObjectStore('thumbs');
+            if (!database.objectStoreNames.contains('state')) database.createObjectStore('state');
           };
           req.onsuccess = e => resolve(e.target.result);
           req.onerror = e => reject(e.target.error);
@@ -406,26 +477,19 @@
         });
       }
 
-      // 缩略图：存 Blob，读出来转 ObjectURL
       async function getThumb(name) {
         try {
           const blob = await idbGet('thumbs', name);
-          if (!blob) return null;
-          return URL.createObjectURL(blob);
-        } catch {
-          return null;
-        }
+          return blob ? URL.createObjectURL(blob) : null;
+        } catch { return null; }
       }
 
       async function saveThumb(name, dataUrl) {
         try {
-          // dataURL → Blob，比直接存字符串更省空间
           const res = await fetch(dataUrl);
           const blob = await res.blob();
           await idbSet('thumbs', name, blob);
-        } catch (e) {
-          console.warn('saveThumb failed', e);
-        }
+        } catch (e) { console.warn('saveThumb', e); }
       }
 
       async function saveState() {
@@ -439,11 +503,8 @@
       }
 
       async function loadState() {
-        try {
-          return await idbGet('state', 'playback');
-        } catch {
-          return null;
-        }
+        try { return await idbGet('state', 'playback'); }
+        catch { return null; }
       }
 
       // ========== 工具 ==========
@@ -460,6 +521,26 @@
         return m ? m[1] : null;
       };
 
+      // ========== 缩放 ==========
+      const applyZoom = () => {
+        stage.style.transform = `scale(${zoom})`;
+      };
+
+      const zoomIn = () => {
+        zoom = Math.min(ZOOM_MAX, +(zoom + ZOOM_STEP).toFixed(2));
+        applyZoom();
+      };
+
+      const zoomOut = () => {
+        zoom = Math.max(ZOOM_MIN, +(zoom - ZOOM_STEP).toFixed(2));
+        applyZoom();
+      };
+
+      const zoomReset = () => {
+        zoom = 1;
+        applyZoom();
+      };
+
       // ========== 截图 ==========
       const capture = () => {
         try {
@@ -472,28 +553,19 @@
           c.height = h;
           c.getContext('2d').drawImage(player, 0, 0, w, h);
           return c.toDataURL('image/jpeg', THUMB_QUALITY);
-        } catch {
-          return null;
-        }
+        } catch { return null; }
       };
 
       const tryCapture = async () => {
         if (mode !== 'local' || currentIndex < 0) return;
         const name = videoList[currentIndex];
-        if (captured.has(name)) return;
-        if (player.currentTime < 0.8) return;
+        if (captured.has(name) || player.currentTime < 0.8) return;
 
-        // 先标记，避免并发重复截
         captured.add(name);
         const dataUrl = capture();
-        if (!dataUrl) {
-          captured.delete(name);
-          return;
-        }
+        if (!dataUrl) { captured.delete(name); return; }
 
         await saveThumb(name, dataUrl);
-
-        // 更新卡片缩略图
         const card = grid.querySelector(`[data-file="${name}"]`);
         if (!card) return;
         const thumb = card.querySelector('.thumb');
@@ -504,12 +576,11 @@
           img = document.createElement('img');
           thumb.insertBefore(img, thumb.querySelector('.num'));
         }
-        // 用 Blob URL 显示
         const url = await getThumb(name);
         if (url) img.src = url;
       };
 
-      // ========== 显示切换 ==========
+      // ========== 显示 ==========
       const hideAll = () => {
         player.style.display = 'none';
         ytFrame.style.display = 'none';
@@ -539,7 +610,6 @@
         grid.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
       };
 
-      // ========== 本地播放 ==========
       const openLocal = (index, restoreTime) => {
         if (index < 0 || index >= videoList.length) return;
         currentIndex = index;
@@ -571,17 +641,11 @@
       };
 
       const playPrev = () => {
-        if (currentIndex > 0) {
-          saveState();
-          openLocal(currentIndex - 1);
-        }
+        if (currentIndex > 0) { saveState(); openLocal(currentIndex - 1); }
       };
 
       const playNext = () => {
-        if (currentIndex < videoList.length - 1) {
-          saveState();
-          openLocal(currentIndex + 1);
-        }
+        if (currentIndex < videoList.length - 1) { saveState(); openLocal(currentIndex + 1); }
       };
 
       // ========== 卡片 ==========
@@ -602,7 +666,7 @@
         } else {
           const ph = document.createElement('div');
           ph.className = 'ph';
-          ph.style.cssText = 'width:100%;height:100%;background:#0a0a0a;display:flex;align-items:center;justify-content:center;color:#444;font-size:0.68rem;';
+          ph.style.cssText = 'width:100%;height:100%;background:#0a0e14;display:flex;align-items:center;justify-content:center;color:#3a4a5c;font-size:0.65rem;';
           ph.textContent = '播放后截图';
           thumb.appendChild(ph);
         }
@@ -644,6 +708,9 @@
       playBtn.addEventListener('click', togglePlay);
       prevBtn.addEventListener('click', playPrev);
       nextBtn.addEventListener('click', playNext);
+      zoomInBtn.addEventListener('click', zoomIn);
+      zoomOutBtn.addEventListener('click', zoomOut);
+      zoomResetBtn.addEventListener('click', zoomReset);
 
       player.addEventListener('play', () => { playBtn.textContent = '⏸'; });
       player.addEventListener('pause', () => {
@@ -675,15 +742,35 @@
 
       document.addEventListener('keydown', e => {
         if (e.target.tagName === 'INPUT') return;
-        if (e.key === ' ' || e.key === 'k' || e.key === 'K') {
-          e.preventDefault();
-          togglePlay();
-        } else if (e.key === 'ArrowLeft') {
-          e.preventDefault();
-          playPrev();
-        } else if (e.key === 'ArrowRight') {
-          e.preventDefault();
-          playNext();
+        switch (e.key) {
+          case ' ':
+          case 'k':
+          case 'K':
+            e.preventDefault();
+            togglePlay();
+            break;
+          case 'ArrowLeft':
+            e.preventDefault();
+            playPrev();
+            break;
+          case 'ArrowRight':
+            e.preventDefault();
+            playNext();
+            break;
+          case '+':
+          case '=':
+            e.preventDefault();
+            zoomIn();
+            break;
+          case '-':
+          case '_':
+            e.preventDefault();
+            zoomOut();
+            break;
+          case '0':
+            e.preventDefault();
+            zoomReset();
+            break;
         }
       });
 
@@ -705,11 +792,7 @@
       });
 
       (async () => {
-        try {
-          db = await openDB();
-        } catch (e) {
-          console.warn('IndexedDB unavailable', e);
-        }
+        try { db = await openDB(); } catch (e) { console.warn('IndexedDB', e); }
 
         const tasks = Array.from({ length: MAX }, (_, i) => {
           const name = (i + 1) + '.mp4';
@@ -724,8 +807,6 @@
 
         status.textContent = '共 ' + videoList.length + ' 个本地视频';
         grid.innerHTML = '';
-
-        // 并行创建卡片（读 IndexedDB 缩略图）
         const cards = await Promise.all(videoList.map(createCard));
         cards.forEach(c => grid.appendChild(c));
 
