@@ -393,7 +393,7 @@
       </div>
     </div>
   </div>
-  <div class="hint">空格 播放/暂停 · ← → 切换 · + − 缩放</div>
+  <div class="hint">空格 播放/暂停 · ← → 切换 · + − 缩放 · 双击画面设为代表图</div>
 
   <div class="list-panel" id="listPanel">
     <h3>本地视频 · 1.mp4 ~ 56.mp4</h3>
@@ -556,16 +556,8 @@
         } catch { return null; }
       };
 
-      const tryCapture = async () => {
-        if (mode !== 'local' || currentIndex < 0) return;
-        const name = videoList[currentIndex];
-        if (captured.has(name) || player.currentTime < 0.8) return;
-
-        captured.add(name);
-        const dataUrl = capture();
-        if (!dataUrl) { captured.delete(name); return; }
-
-        await saveThumb(name, dataUrl);
+      // 更新列表卡片上的缩略图显示
+      const updateCardThumb = async (name) => {
         const card = grid.querySelector(`[data-file="${name}"]`);
         if (!card) return;
         const thumb = card.querySelector('.thumb');
@@ -576,8 +568,43 @@
           img = document.createElement('img');
           thumb.insertBefore(img, thumb.querySelector('.num'));
         }
+        // 释放旧 ObjectURL，避免泄漏
+        if (img.dataset.blobUrl) {
+          try { URL.revokeObjectURL(img.dataset.blobUrl); } catch {}
+        }
         const url = await getThumb(name);
-        if (url) img.src = url;
+        if (url) {
+          img.dataset.blobUrl = url;
+          img.src = url;
+        }
+      };
+
+      // 将当前画面设为代表图（可覆盖旧图）
+      const setThumbFromCurrent = async () => {
+        if (mode !== 'local' || currentIndex < 0) return false;
+        if (!player.videoWidth) return false;
+        const name = videoList[currentIndex];
+        const dataUrl = capture();
+        if (!dataUrl) return false;
+        await saveThumb(name, dataUrl);
+        captured.add(name);
+        await updateCardThumb(name);
+        return true;
+      };
+
+      // 自动截图：仅当该视频还没有代表图时
+      const tryCapture = async () => {
+        if (mode !== 'local' || currentIndex < 0) return;
+        const name = videoList[currentIndex];
+        if (captured.has(name) || player.currentTime < 0.8) return;
+        // 再查一次库，避免重复
+        const existing = await getThumb(name);
+        if (existing) {
+          captured.add(name);
+          try { URL.revokeObjectURL(existing); } catch {}
+          return;
+        }
+        await setThumbFromCurrent();
       };
 
       // ========== 显示 ==========
@@ -730,6 +757,22 @@
       });
       player.addEventListener('loadedmetadata', () => {
         durationEl.textContent = fmt(player.duration);
+      });
+
+      // 双击视频画面 → 设为当前视频代表图（覆盖旧图）
+      player.addEventListener('dblclick', async e => {
+        e.preventDefault();
+        const ok = await setThumbFromCurrent();
+        if (ok) {
+          // 简短提示
+          const prev = nowPlaying.textContent;
+          nowPlaying.textContent = '✓ 已设为代表图';
+          setTimeout(() => {
+            if (nowPlaying.textContent === '✓ 已设为代表图') {
+              nowPlaying.textContent = prev;
+            }
+          }, 1200);
+        }
       });
 
       progressBar.addEventListener('click', e => {
