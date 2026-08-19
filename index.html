@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>视频列表</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #2f81f7;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+
+    .header {
+      max-width: 1100px;
+      margin: 0 auto 28px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .header p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .grid {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+
+    .card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .thumb {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      overflow: hidden;
+    }
+
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .thumb .play-icon {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.35);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .card:hover .play-icon {
+      opacity: 1;
+    }
+
+    .play-icon svg {
+      width: 48px;
+      height: 48px;
+      fill: #fff;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+    }
+
+    .info {
+      padding: 12px 14px;
+    }
+
+    .info .name {
+      font-size: 0.92rem;
+      font-weight: 500;
+    }
+
+    .info .meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* 播放弹层 */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+
+    .modal.open {
+      display: flex;
+    }
+
+    .modal-content {
+      width: 100%;
+      max-width: 900px;
+      background: #000;
+      border-radius: var(--radius);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .modal video {
+      width: 100%;
+      display: block;
+      max-height: 80vh;
+      background: #000;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      font-size: 1.3rem;
+      cursor: pointer;
+      z-index: 2;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      background: rgba(0,0,0,0.85);
+    }
+
+    .modal-title {
+      padding: 10px 16px;
+      background: var(--card);
+      font-size: 0.9rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+
+    .status {
+      max-width: 1100px;
+      margin: 0 auto 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: var(--muted);
+      padding: 48px 16px;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>视频列表</h1>
+    <p>自动检测 1.mp4 ~ 56.mp4</p>
+  </div>
+
+  <div class="status" id="status">正在扫描视频…</div>
+  <div class="grid" id="grid"></div>
+
+  <!-- 播放弹层 -->
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <button class="modal-close" id="closeBtn" title="关闭">×</button>
+      <video id="player" controls playsinline></video>
+      <div class="modal-title" id="modalTitle"></div>
+    </div>
+  </div>
+
+  <script>
+    const MAX = 56;          // 扫描范围 1 ~ 56
+    const grid = document.getElementById('grid');
+    const status = document.getElementById('status');
+    const modal = document.getElementById('modal');
+    const player = document.getElementById('player');
+    const modalTitle = document.getElementById('modalTitle');
+    const closeBtn = document.getElementById('closeBtn');
+
+    // 检查某个 mp4 是否存在
+    function checkVideoExists(src) {
+      return new Promise((resolve) => {
+        const v = document.createElement('video');
+        v.preload = 'metadata';
+        v.muted = true;
+        v.playsInline = true;
+
+        const done = (ok) => {
+          v.removeAttribute('src');
+          v.load();
+          resolve(ok);
+        };
+
+        v.addEventListener('loadedmetadata', () => done(true));
+        v.addEventListener('error', () => done(false));
+
+        // 超时也当不存在
+        setTimeout(() => done(false), 4000);
+
+        v.src = src;
+      });
+    }
+
+    // 生成缩略图
+    function generateThumbnail(src) {
+      return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.muted = true;
+        video.preload = 'metadata';
+        video.playsInline = true;
+        video.src = src;
+
+        const cleanup = () => {
+          video.removeAttribute('src');
+          video.load();
+        };
+
+        video.addEventListener('loadeddata', () => {
+          const t = Math.min(1, (video.duration || 2) * 0.25);
+          video.currentTime = t;
+        });
+
+        video.addEventListener('seeked', () => {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 320;
+            canvas.height = video.videoHeight || 180;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.75));
+          } catch (e) {
+            resolve(null);
+          } finally {
+            cleanup();
+          }
+        });
+
+        video.addEventListener('error', () => {
+          cleanup();
+          resolve(null);
+        });
+
+        setTimeout(() => {
+          cleanup();
+          resolve(null);
+        }, 6000);
+      });
+    }
+
+    function createCard(filename, thumbUrl) {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+
+      if (thumbUrl) {
+        const img = document.createElement('img');
+        img.src = thumbUrl;
+        img.alt = filename;
+        thumb.appendChild(img);
+      } else {
+        const fallback = document.createElement('div');
+        fallback.style.cssText = 'width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#666;font-size:0.85rem;';
+        fallback.textContent = '无预览';
+        thumb.appendChild(fallback);
+      }
+
+      const playIcon = document.createElement('div');
+      playIcon.className = 'play-icon';
+      playIcon.innerHTML = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+      thumb.appendChild(playIcon);
+
+      const info = document.createElement('div');
+      info.className = 'info';
+      info.innerHTML = `
+        <div class="name">${filename.replace(/\.mp4$/i, '')}</div>
+        <div class="meta">${filename}</div>
+      `;
+
+      card.appendChild(thumb);
+      card.appendChild(info);
+
+      card.addEventListener('click', () => {
+        player.src = filename;
+        modalTitle.textContent = filename;
+        modal.classList.add('open');
+        player.play().catch(() => {});
+      });
+
+      return card;
+    }
+
+    async function scan() {
+      const found = [];
+
+      // 并发检查，加快速度
+      const checks = [];
+      for (let i = 1; i <= MAX; i++) {
+        const name = `${i}.mp4`;
+        checks.push(
+          checkVideoExists(name).then(exists => ({ name, exists }))
+        );
+      }
+
+      const results = await Promise.all(checks);
+      const existing = results.filter(r => r.exists).map(r => r.name);
+
+      if (existing.length === 0) {
+        status.textContent = '未发现任何视频（请把文件命名为 1.mp4、2.mp4 …）';
+        grid.innerHTML = `<div class="empty">把 mp4 重命名为 1.mp4、2.mp4 … 56.mp4<br>放在本目录后刷新即可</div>`;
+        return;
+      }
+
+      status.textContent = `发现 ${existing.length} 个视频，正在生成截图…`;
+
+      // 逐个生成缩略图并显示（边生成边显示）
+      for (const name of existing) {
+        const thumbUrl = await generateThumbnail(name);
+        const card = createCard(name, thumbUrl);
+        grid.appendChild(card);
+      }
+
+      status.textContent = `共 ${existing.length} 个视频`;
+    }
+
+    // 关闭弹层
+    function closeModal() {
+      modal.classList.remove('open');
+      player.pause();
+      player.removeAttribute('src');
+      player.load();
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    scan();
+  </script>
+</body>
+</html>
