@@ -33,57 +33,17 @@
       padding: 12px 10px 28px;
     }
 
-    /* 工具栏 */
-    .toolbar {
+    /* 品牌栏：左对齐，与下方 title-bar 的"准备播放"文字左边缘对齐 */
+    .brand {
       width: 100%;
       max-width: 900px;
-      display: flex;
-      gap: 6px;
       margin-bottom: 10px;
-      flex-wrap: wrap;
-    }
-
-    .toolbar input {
-      flex: 1;
-      min-width: 140px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 8px 10px;
-      color: var(--text);
-      font-size: 0.85rem;
-      outline: none;
-    }
-
-    .toolbar input:focus { border-color: var(--accent); }
-    .toolbar input::placeholder { color: #4a5a6c; }
-
-    .toolbar button {
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 8px 12px;
-      font-size: 0.82rem;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.15s, border-color 0.15s;
-      color: var(--text);
-      background: var(--surface);
-    }
-
-    .toolbar button:hover {
-      background: #1a2430;
-      border-color: var(--accent);
-    }
-
-    .toolbar .btn-primary {
-      background: transparent;
-      border-color: var(--gold-dim);
+      padding-left: 10px;
+      text-align: left;
+      font-size: 0.72rem;
+      font-weight: 300;
+      letter-spacing: 0.06em;
       color: var(--gold);
-    }
-
-    .toolbar .btn-primary:hover {
-      border-color: var(--gold);
-      background: rgba(196, 163, 90, 0.08);
     }
 
     /* 仅视频外沿金色细线 */
@@ -134,8 +94,6 @@
       width: 100%;
       aspect-ratio: 16 / 9;
       background: #000;
-      transform-origin: center center;
-      transition: transform 0.2s ease;
     }
 
     .stage video,
@@ -249,12 +207,61 @@
       border-top: 1px solid var(--border);
     }
 
-    .controls-left,
-    .controls-right {
+    .controls-left {
       display: flex;
       align-items: center;
       gap: 2px;
       flex-shrink: 0;
+    }
+
+    .controls-right {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+      justify-content: flex-end;
+    }
+
+    /* 全屏：与"下一个"之间空隙更大 */
+    .fs-btn { margin-left: 16px; }
+
+    /* 文件夹（列表）按钮：紧跟全屏之后 */
+    .folder-btn { margin-left: 6px; }
+
+    /* YouTube 链接输入区：与文件夹按钮之间空隙更大 */
+    .url-inline {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 18px;
+      flex: 1;
+      min-width: 54px;
+      max-width: 240px;
+    }
+
+    .url-inline input {
+      flex: 1;
+      min-width: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 5px 7px;
+      color: var(--text);
+      font-size: 0.72rem;
+      outline: none;
+    }
+
+    .url-inline input:focus { border-color: var(--accent); }
+    .url-inline input::placeholder { color: #4a5a6c; }
+
+    .url-inline button {
+      flex-shrink: 0;
+      min-width: 28px;
+      min-height: 28px;
+      font-size: 1rem;
+      padding: 2px;
+      color: var(--gold);
     }
 
     .controls-center {
@@ -340,22 +347,6 @@
       opacity: 0.9;
     }
 
-    .controls .zoom-group {
-      display: flex;
-      gap: 2px;
-      margin-left: 2px;
-      padding-left: 6px;
-      border-left: 1px solid var(--border);
-    }
-
-    .hint {
-      margin-top: 8px;
-      text-align: center;
-      color: #2e3c4c;
-      font-size: 0.65rem;
-      padding: 0 8px;
-    }
-
     .list-panel {
       width: 100%;
       max-width: 900px;
@@ -436,13 +427,16 @@
     /* 手机竖屏更紧凑 */
     @media (max-width: 600px) {
       body { padding: 8px 6px 20px; }
-      .toolbar { gap: 5px; margin-bottom: 8px; }
-      .toolbar input { padding: 7px 8px; font-size: 0.8rem; }
-      .toolbar button { padding: 7px 10px; font-size: 0.78rem; }
+      .brand { font-size: 0.66rem; margin-bottom: 8px; }
       .controls { gap: 2px 6px; padding: 4px 4px 6px; }
       .controls button { min-width: 32px; min-height: 32px; font-size: 1.15rem; padding: 4px 2px; }
       .controls .play { font-size: 1.35rem; }
       .title-bar { padding: 5px 8px; font-size: 0.7rem; }
+      .fs-btn { margin-left: 10px; }
+      .folder-btn { margin-left: 4px; }
+      .url-inline { margin-left: 10px; min-width: 44px; max-width: 150px; }
+      .url-inline input { padding: 4px 6px; font-size: 0.68rem; }
+      .url-inline button { min-width: 24px; min-height: 24px; font-size: 0.9rem; }
     }
 
     /* 横屏：左播放 · 中进度 · 右全屏/缩放，单行不挤 */
@@ -451,12 +445,7 @@
         padding: 4px 8px 6px;
         justify-content: flex-start;
       }
-      .toolbar {
-        margin-bottom: 4px;
-        gap: 4px;
-      }
-      .toolbar input { padding: 5px 8px; font-size: 0.78rem; }
-      .toolbar button { padding: 5px 8px; font-size: 0.75rem; }
+      .brand { margin-bottom: 4px; font-size: 0.64rem; }
       .title-bar { padding: 2px 8px; font-size: 0.68rem; }
 
       /* 上方独立进度条隐藏，并入控制条中间 */
@@ -476,11 +465,11 @@
         padding: 2px;
       }
       .controls .play { font-size: 1.22rem; padding: 2px 6px; }
-      .controls .zoom-group {
-        margin-left: 2px;
-        padding-left: 6px;
-      }
-      .hint { display: none; }
+      .fs-btn { margin-left: 10px; }
+      .folder-btn { margin-left: 4px; }
+      .url-inline { margin-left: 10px; min-width: 44px; max-width: 150px; }
+      .url-inline input { padding: 3px 6px; font-size: 0.68rem; }
+      .url-inline button { min-width: 24px; min-height: 24px; font-size: 0.9rem; }
       .list-panel { margin-top: 6px; }
 
       .stage {
@@ -492,7 +481,7 @@
 
     /* 矮横屏（手机横过来）再压一点 */
     @media (orientation: landscape) and (max-height: 420px) {
-      .toolbar { margin-bottom: 2px; }
+      .brand { margin-bottom: 2px; }
       .title-bar { display: none; }
       .controls { padding: 2px 4px 3px; min-height: 32px; }
       .controls button { min-width: 28px; min-height: 28px; font-size: 1rem; }
@@ -506,11 +495,7 @@
 </head>
 <body>
 
-  <div class="toolbar">
-    <input type="url" id="urlInput" placeholder="粘贴 YouTube 链接，或留空播放本地视频" />
-    <button class="btn-primary" id="playUrlBtn">播放链接</button>
-    <button id="toggleListBtn">本地列表</button>
-  </div>
+  <div class="brand">TP制作🐈📽️</div>
 
   <div class="screen-wrap">
     <div class="screen-inner">
@@ -541,6 +526,7 @@
         </div>
       </div>
 
+      <!-- 播放控制条：左（上一个/播放/下一个）· 中（进度条，仅横屏显示）· 右（全屏 → 文件夹列表 → YouTube 链接输入） -->
       <div class="controls">
         <div class="controls-left">
           <button id="prevBtn" title="上一个 (←)" disabled>⏮</button>
@@ -558,18 +544,16 @@
           </div>
         </div>
         <div class="controls-right">
-          <button id="fsBtn" title="全屏 (F)">⛶</button>
-          <div class="zoom-group">
-            <button id="zoomOutBtn" title="缩小 (−)">−</button>
-            <button id="zoomInBtn" title="放大 (+)">+</button>
-            <button id="zoomResetBtn" title="重置缩放">1:1</button>
+          <button id="fsBtn" class="fs-btn" title="全屏 (F)">⛶</button>
+          <button id="toggleListBtn" class="folder-btn" title="本地列表">📁</button>
+          <div class="url-inline">
+            <input type="url" id="urlInput" placeholder="YouTube 链接" />
+            <button id="playUrlBtn" title="播放链接">▶</button>
           </div>
         </div>
       </div>
     </div>
   </div>
-  <div class="hint">空格 播放/暂停 · ← → 切换 · F 全屏 · + − 缩放 · 双击设代表图</div>
-
   <div class="list-panel" id="listPanel">
     <h3>本地视频 · 1.mp4 ~ 56.mp4</h3>
     <div class="grid" id="grid"></div>
@@ -577,16 +561,25 @@
   </div>
 
   <script>
+    /*
+     * 整体结构：
+     * 1. 常量与 DOM 引用
+     * 2. IndexedDB 封装（缩略图 thumbs 库 / 播放状态 state 库）
+     * 3. 工具函数（时间格式化、YouTube ID 解析、全屏、截图）
+     * 4. 显示切换（本地视频 / YouTube iframe / 占位图）
+     * 5. 播放控制（上一个/下一个/播放暂停）
+     * 6. 本地视频列表卡片渲染
+     * 7. 事件绑定（按钮点击、播放器事件、进度条拖拽、键盘快捷键）
+     * 8. 启动流程（扫描 1.mp4~56.mp4 → 建列表 → 恢复上次播放状态）
+     */
     (() => {
       const MAX = 56;
       const DB_NAME = 'cinema_db';
       const DB_VER = 1;
       const THUMB_MAX_W = 320;
       const THUMB_QUALITY = 0.55;
-      const ZOOM_MIN = 0.5;
-      const ZOOM_MAX = 2.5;
-      const ZOOM_STEP = 0.15;
 
+      // ---- DOM 引用 ----
       const $ = id => document.getElementById(id);
       const urlInput = $('urlInput');
       const playUrlBtn = $('playUrlBtn');
@@ -621,21 +614,19 @@
         if (currentTimeLand) currentTimeLand.textContent = c;
         if (durationLand) durationLand.textContent = d;
       };
-      const stage = $('stage');
-      const zoomInBtn = $('zoomInBtn');
-      const zoomOutBtn = $('zoomOutBtn');
-      const zoomResetBtn = $('zoomResetBtn');
       const fsBtn = $('fsBtn');
       const screenWrap = document.querySelector('.screen-wrap');
 
       let videoList = [];
       let currentIndex = -1;
       let mode = null;
-      let zoom = 1;
       const captured = new Set();
       let db = null;
 
       // ========== IndexedDB ==========
+      // 两个 object store：
+      //   thumbs：key = 文件名，value = 缩略图 Blob（用于本地视频列表卡片封面）
+      //   state ：key = 'playback'，value = { file, time }，用于刷新后恢复播放进度
       function openDB() {
         return new Promise((resolve, reject) => {
           const req = indexedDB.open(DB_NAME, DB_VER);
@@ -701,12 +692,6 @@
         return null;
       }
 
-      async function getThumb(name) {
-        const rec = await getThumbRecord(name);
-        const r = recordToSrc(rec);
-        return r ? r.src : null;
-      }
-
       async function hasThumb(name) {
         const rec = await getThumbRecord(name);
         return !!rec;
@@ -756,26 +741,6 @@
         return m ? m[1] : null;
       };
 
-      // ========== 缩放 ==========
-      const applyZoom = () => {
-        stage.style.transform = `scale(${zoom})`;
-      };
-
-      const zoomIn = () => {
-        zoom = Math.min(ZOOM_MAX, +(zoom + ZOOM_STEP).toFixed(2));
-        applyZoom();
-      };
-
-      const zoomOut = () => {
-        zoom = Math.max(ZOOM_MIN, +(zoom - ZOOM_STEP).toFixed(2));
-        applyZoom();
-      };
-
-      const zoomReset = () => {
-        zoom = 1;
-        applyZoom();
-      };
-
       const toggleFullscreen = async () => {
         const el = screenWrap || document.documentElement;
         try {
@@ -795,9 +760,9 @@
         }
       };
 
+      // 全屏按钮图标固定不变，仅切换 title 提示文字（进入/退出）
       const syncFsBtn = () => {
         const on = !!(document.fullscreenElement || document.webkitFullscreenElement);
-        fsBtn.textContent = on ? '⛶' : '⛶';
         fsBtn.title = on ? '退出全屏 (F)' : '全屏 (F)';
       };
 
@@ -1005,7 +970,8 @@
         return card;
       };
 
-      // ========== 事件 ==========
+      // ========== 事件绑定 ==========
+      // -- 顶部/控制条按钮 --
       playUrlBtn.addEventListener('click', () => {
         const id = ytId(urlInput.value.trim());
         if (!id) return alert('无法识别 YouTube 链接');
@@ -1019,20 +985,19 @@
 
       toggleListBtn.addEventListener('click', () => {
         const open = listPanel.classList.toggle('open');
-        toggleListBtn.textContent = open ? '收起列表' : '本地列表';
+        toggleListBtn.textContent = open ? '📂' : '📁';
+        toggleListBtn.title = open ? '收起列表' : '本地列表';
         if (open) refreshAllThumbs();
       });
 
       playBtn.addEventListener('click', togglePlay);
       prevBtn.addEventListener('click', playPrev);
       nextBtn.addEventListener('click', playNext);
-      zoomInBtn.addEventListener('click', zoomIn);
-      zoomOutBtn.addEventListener('click', zoomOut);
-      zoomResetBtn.addEventListener('click', zoomReset);
       fsBtn.addEventListener('click', toggleFullscreen);
       document.addEventListener('fullscreenchange', syncFsBtn);
       document.addEventListener('webkitfullscreenchange', syncFsBtn);
 
+      // -- <video> 播放器事件 --
       player.addEventListener('play', () => { playBtn.textContent = '⏸'; });
       player.addEventListener('pause', () => {
         playBtn.textContent = '▶';
@@ -1073,7 +1038,7 @@
         }
       });
 
-      // 进度条点击 + 拖拽（鼠标 / 触摸）
+      // -- 进度条点击 + 拖拽（鼠标 / 触摸 / 指针事件三套兼容） --
       let seeking = false;
       let seekBar = null;
 
@@ -1147,6 +1112,7 @@
 
       setInterval(saveState, 5000);
 
+      // -- 键盘快捷键（输入框聚焦时不触发，避免和打字冲突） --
       document.addEventListener('keydown', e => {
         if (e.target.tagName === 'INPUT') return;
         switch (e.key) {
@@ -1163,20 +1129,6 @@
           case 'ArrowRight':
             e.preventDefault();
             playNext();
-            break;
-          case '+':
-          case '=':
-            e.preventDefault();
-            zoomIn();
-            break;
-          case '-':
-          case '_':
-            e.preventDefault();
-            zoomOut();
-            break;
-          case '0':
-            e.preventDefault();
-            zoomReset();
             break;
           case 'f':
           case 'F':
