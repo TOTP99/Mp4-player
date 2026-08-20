@@ -556,6 +556,8 @@
         <div class="controls-right">
           <button id="fsBtn" class="fs-btn" title="全屏 (F)">⛶</button>
           <button id="toggleListBtn" class="folder-btn" title="本地列表">📁</button>
+          <button id="pickFolderBtn" class="folder-btn" title="选择视频文件夹">📂+</button>
+          <input type="file" id="folderInput" webkitdirectory multiple accept="video/*" style="display:none" />
           <div class="url-inline">
             <input type="url" id="urlInput" placeholder="YouTube 链接" />
             <button id="playUrlBtn" title="播放链接">▶</button>
@@ -565,7 +567,7 @@
     </div>
   </div>
   <div class="list-panel" id="listPanel">
-    <h3>本地视频 · 1.mp4 ~ 56.mp4</h3>
+    <h3>本地视频（自动扫描 1.mp4~56.mp4，或点 📂+ 手动选择文件夹）</h3>
     <div class="grid" id="grid"></div>
     <div class="status" id="status"></div>
   </div>
@@ -594,6 +596,8 @@
       const urlInput = $('urlInput');
       const playUrlBtn = $('playUrlBtn');
       const toggleListBtn = $('toggleListBtn');
+      const pickFolderBtn = $('pickFolderBtn');
+      const folderInput = $('folderInput');
       const listPanel = $('listPanel');
       const grid = $('grid');
       const status = $('status');
@@ -629,6 +633,7 @@
       const clockEl = $('clock');
 
       let videoList = [];
+      let srcMap = {}; // 文件名 -> objectURL（手动选择文件夹时使用；自动扫描的文件直接用相对路径）
       let currentIndex = -1;
       let mode = null;
       const captured = new Set();
@@ -918,7 +923,7 @@
         const file = videoList[index];
 
         showLocal();
-        player.src = file;
+        player.src = srcMap[file] || file;
         nowPlaying.textContent = file;
         prevBtn.disabled = index <= 0;
         nextBtn.disabled = index >= videoList.length - 1;
@@ -1198,6 +1203,65 @@
         return results;
       };
 
+      // 把 videoList 渲染成卡片列表，并（可选）恢复上次播放状态
+      const renderVideoList = async (restoreState) => {
+        if (!videoList.length) {
+          status.textContent = '未发现本地视频（请命名为 1.mp4 ~ 56.mp4，或点 📂+ 手动选择文件夹）';
+          grid.innerHTML = '';
+          return;
+        }
+        status.textContent = '共 ' + videoList.length + ' 个本地视频';
+        grid.innerHTML = '';
+        try {
+          const cards = await Promise.all(videoList.map(createCard));
+          cards.forEach(c => grid.appendChild(c));
+          // 再次从 IndexedDB 刷新缩略图，避免首次未显示
+          await refreshAllThumbs();
+
+          if (restoreState) {
+            const state = await loadState();
+            if (state?.file && videoList.includes(state.file)) {
+              openLocal(videoList.indexOf(state.file), state.time);
+              return;
+            }
+          }
+          openLocal(0);
+        } catch (e) {
+          console.error('渲染出错', e);
+          status.textContent = '共 ' + videoList.length + ' 个本地视频（渲染出错：' + (e && e.message ? e.message : e) + '）';
+        }
+      };
+
+      // -- 手动选择视频文件夹（不依赖猜文件名探测，直接读取选中的文件） --
+      pickFolderBtn.addEventListener('click', () => folderInput.click());
+
+      folderInput.addEventListener('change', async () => {
+        const files = Array.from(folderInput.files || []).filter(f => /\.(mp4|mov|m4v|webm)$/i.test(f.name));
+        if (!files.length) {
+          status.textContent = '所选文件夹中未找到视频文件';
+          return;
+        }
+        // 按文件名中的数字排序（1.mp4, 2.mp4 ... 10.mp4），非数字命名则按字母排序
+        files.sort((a, b) => {
+          const na = parseInt(a.name, 10);
+          const nb = parseInt(b.name, 10);
+          if (!isNaN(na) && !isNaN(nb)) return na - nb;
+          return a.name.localeCompare(b.name);
+        });
+
+        // 释放旧的 objectURL，避免内存泄漏
+        Object.values(srcMap).forEach(url => { try { URL.revokeObjectURL(url); } catch (_) {} });
+        srcMap = {};
+        files.forEach(f => { srcMap[f.name] = URL.createObjectURL(f); });
+
+        videoList = files.map(f => f.name);
+        currentIndex = -1;
+        listPanel.classList.add('open');
+        toggleListBtn.textContent = '📂';
+        toggleListBtn.title = '收起列表';
+        await renderVideoList(false);
+      });
+
       (async () => {
         try { db = await openDB(); } catch (e) { console.warn('IndexedDB', e); }
 
@@ -1208,35 +1272,12 @@
           found = await scanSequential(allNames, 6000);
         } catch (e) {
           console.error('扫描出错', e);
-          status.textContent = '扫描出错：' + (e && e.message ? e.message : e);
+          status.textContent = '自动扫描出错，可点 📂+ 手动选择文件夹';
           return;
         }
 
         videoList = allNames.filter((_, i) => found[i]);
-
-        if (!videoList.length) {
-          status.textContent = '未发现本地视频（请命名为 1.mp4 ~ 56.mp4）';
-          return;
-        }
-
-        status.textContent = '共 ' + videoList.length + ' 个本地视频';
-        grid.innerHTML = '';
-        try {
-          const cards = await Promise.all(videoList.map(createCard));
-          cards.forEach(c => grid.appendChild(c));
-          // 再次从 IndexedDB 刷新缩略图，避免首次未显示
-          await refreshAllThumbs();
-
-          const state = await loadState();
-          if (state?.file && videoList.includes(state.file)) {
-            openLocal(videoList.indexOf(state.file), state.time);
-          } else {
-            openLocal(0);
-          }
-        } catch (e) {
-          console.error('渲染出错', e);
-          status.textContent = '共 ' + videoList.length + ' 个本地视频（渲染出错：' + (e && e.message ? e.message : e) + '）';
-        }
+        await renderVideoList(true);
       })();
     })();
   </script>
