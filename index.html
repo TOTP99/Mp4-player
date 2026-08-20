@@ -504,7 +504,7 @@
 
   <div class="brand">
     <span>TP制作🐈📽️</span>
-    <span class="clock" id="clock">🈷️ --日 星期- --:--:--</span>
+    <span class="clock" id="clock">--月--日 星期- --:--:--</span>
   </div>
 
   <div class="screen-wrap">
@@ -640,12 +640,13 @@
       const updateClock = () => {
         if (!clockEl) return;
         const now = new Date();
+        const month = now.getMonth() + 1;
         const day = now.getDate();
         const week = WEEKDAYS[now.getDay()];
         const h = pad2(now.getHours());
         const m = pad2(now.getMinutes());
         const s = pad2(now.getSeconds());
-        clockEl.textContent = `🈷️ ${day}日 星期${week} ${h}:${m}:${s}`;
+        clockEl.textContent = `${month}月${day}日 星期${week} ${h}:${m}:${s}`;
       };
       updateClock();
       setInterval(updateClock, 1000);
@@ -1166,30 +1167,58 @@
       });
 
       // ========== 扫描 ==========
-      const exists = src => new Promise(resolve => {
+      // 单个文件是否存在的探测，timeoutMs 可调（排队等待中的探测需要更长超时）
+      const exists = (src, timeoutMs = 8000) => new Promise(resolve => {
         const v = document.createElement('video');
         v.preload = 'metadata';
         v.muted = true;
         v.playsInline = true;
+        let settled = false;
         const done = ok => {
+          if (settled) return;
+          settled = true;
           v.removeAttribute('src');
           v.load();
           resolve(ok);
         };
         v.addEventListener('loadedmetadata', () => done(true));
         v.addEventListener('error', () => done(false));
-        setTimeout(() => done(false), 3000);
+        setTimeout(() => done(false), timeoutMs);
         v.src = src;
       });
+
+      // 分批扫描，避免一次性并发过多导致浏览器排队、探测超时误判为"不存在"
+      const scanNames = async (names, concurrency = 6, timeoutMs = 8000) => {
+        const results = new Array(names.length).fill(false);
+        let cursor = 0;
+        const worker = async () => {
+          while (cursor < names.length) {
+            const i = cursor++;
+            results[i] = await exists(names[i], timeoutMs);
+          }
+        };
+        const workers = Array.from({ length: Math.min(concurrency, names.length) }, worker);
+        await Promise.all(workers);
+        return results;
+      };
 
       (async () => {
         try { db = await openDB(); } catch (e) { console.warn('IndexedDB', e); }
 
-        const tasks = Array.from({ length: MAX }, (_, i) => {
-          const name = (i + 1) + '.mp4';
-          return exists(name).then(ok => (ok ? name : null));
-        });
-        videoList = (await Promise.all(tasks)).filter(Boolean);
+        const allNames = Array.from({ length: MAX }, (_, i) => (i + 1) + '.mp4');
+
+        // 第一轮：限并发扫描
+        let found = await scanNames(allNames, 6, 8000);
+
+        // 第二轮：对第一轮判定为"不存在"的文件再复查一次，进一步降低误判概率
+        const missingIdx = found.map((ok, i) => (ok ? -1 : i)).filter(i => i >= 0);
+        if (missingIdx.length) {
+          const recheckNames = missingIdx.map(i => allNames[i]);
+          const recheck = await scanNames(recheckNames, 4, 10000);
+          recheck.forEach((ok, k) => { if (ok) found[missingIdx[k]] = true; });
+        }
+
+        videoList = allNames.filter((_, i) => found[i]);
 
         if (!videoList.length) {
           status.textContent = '未发现本地视频（请命名为 1.mp4 ~ 56.mp4）';
