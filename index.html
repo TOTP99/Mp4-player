@@ -1167,8 +1167,8 @@
       });
 
       // ========== 扫描 ==========
-      // 单个文件是否存在的探测，timeoutMs 可调（排队等待中的探测需要更长超时）
-      const exists = (src, timeoutMs = 8000) => new Promise(resolve => {
+      // 单个文件是否存在的探测：用 <video preload=metadata> 试加载，能拿到元数据即存在
+      const exists = (src, timeoutMs = 6000) => new Promise(resolve => {
         const v = document.createElement('video');
         v.preload = 'metadata';
         v.muted = true;
@@ -1187,18 +1187,14 @@
         v.src = src;
       });
 
-      // 分批扫描，避免一次性并发过多导致浏览器排队、探测超时误判为"不存在"
-      const scanNames = async (names, concurrency = 6, timeoutMs = 8000) => {
-        const results = new Array(names.length).fill(false);
-        let cursor = 0;
-        const worker = async () => {
-          while (cursor < names.length) {
-            const i = cursor++;
-            results[i] = await exists(names[i], timeoutMs);
-          }
-        };
-        const workers = Array.from({ length: Math.min(concurrency, names.length) }, worker);
-        await Promise.all(workers);
+      // 顺序逐个探测（不并发）：移动端 WebView 对同时存在多个 <video> 元素
+      // 常有硬件解码器数量限制，并发探测反而会导致大量误判为"不存在"。
+      // 逐个探测虽然慢一点，但准确可靠。
+      const scanSequential = async (names, timeoutMs = 6000) => {
+        const results = [];
+        for (const name of names) {
+          results.push(await exists(name, timeoutMs));
+        }
         return results;
       };
 
@@ -1207,15 +1203,13 @@
 
         const allNames = Array.from({ length: MAX }, (_, i) => (i + 1) + '.mp4');
 
-        // 第一轮：限并发扫描
-        let found = await scanNames(allNames, 6, 8000);
-
-        // 第二轮：对第一轮判定为"不存在"的文件再复查一次，进一步降低误判概率
-        const missingIdx = found.map((ok, i) => (ok ? -1 : i)).filter(i => i >= 0);
-        if (missingIdx.length) {
-          const recheckNames = missingIdx.map(i => allNames[i]);
-          const recheck = await scanNames(recheckNames, 4, 10000);
-          recheck.forEach((ok, k) => { if (ok) found[missingIdx[k]] = true; });
+        let found;
+        try {
+          found = await scanSequential(allNames, 6000);
+        } catch (e) {
+          console.error('扫描出错', e);
+          status.textContent = '扫描出错：' + (e && e.message ? e.message : e);
+          return;
         }
 
         videoList = allNames.filter((_, i) => found[i]);
@@ -1227,16 +1221,21 @@
 
         status.textContent = '共 ' + videoList.length + ' 个本地视频';
         grid.innerHTML = '';
-        const cards = await Promise.all(videoList.map(createCard));
-        cards.forEach(c => grid.appendChild(c));
-        // 再次从 IndexedDB 刷新缩略图，避免首次未显示
-        await refreshAllThumbs();
+        try {
+          const cards = await Promise.all(videoList.map(createCard));
+          cards.forEach(c => grid.appendChild(c));
+          // 再次从 IndexedDB 刷新缩略图，避免首次未显示
+          await refreshAllThumbs();
 
-        const state = await loadState();
-        if (state?.file && videoList.includes(state.file)) {
-          openLocal(videoList.indexOf(state.file), state.time);
-        } else {
-          openLocal(0);
+          const state = await loadState();
+          if (state?.file && videoList.includes(state.file)) {
+            openLocal(videoList.indexOf(state.file), state.time);
+          } else {
+            openLocal(0);
+          }
+        } catch (e) {
+          console.error('渲染出错', e);
+          status.textContent = '共 ' + videoList.length + ' 个本地视频（渲染出错：' + (e && e.message ? e.message : e) + '）';
         }
       })();
     })();
