@@ -1,0 +1,493 @@
+    :root {
+      --bg: #0a0e14;
+      --surface: #111820;
+      --card: #151c26;
+      --border: #1e2a3a;
+      --text: #d8e1ec;
+      --muted: #6b7c90;
+      --accent: #5b9fd4;
+      --accent-hover: #7bb3de;
+      --gold: #c4a35a;
+      --gold-dim: #8a7340;
+      --radius: 4px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 10px 28px;
+    }
+
+    /* 品牌栏：左品牌名，右日期时间，与下方 title-bar 的"准备播放"文字左边缘对齐 */
+    .brand {
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 10px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      font-weight: 300;
+      letter-spacing: 0.06em;
+      color: var(--gold);
+    }
+    .brand .clock {
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    /* 仅视频外沿金色细线 */
+    .screen-wrap {
+      width: 100%;
+      max-width: 900px;
+      border: 1px solid var(--gold);
+      border-radius: 0;
+      padding: 0;
+      background: #000;
+      box-shadow: none;
+    }
+
+    .screen-inner {
+      background: #000;
+      border: none;
+      overflow: hidden;
+    }
+
+    .title-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .title-bar .now {
+      color: var(--text);
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      letter-spacing: 0.02em;
+    }
+
+    .stage-outer {
+      position: relative;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .stage {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+    }
+
+    .stage video,
+    .stage iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: none;
+      background: #000;
+      object-fit: contain;
+    }
+
+    .stage .placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #3a4a5c;
+      font-size: 0.8rem;
+    }
+
+    .stage .placeholder svg {
+      width: 40px;
+      height: 40px;
+      opacity: 0.4;
+    }
+
+    .progress-area {
+      padding: 4px 10px 2px;
+      background: var(--surface);
+      display: none;
+    }
+
+    .progress-area.show { display: block; }
+
+    .progress-bar {
+      position: relative;
+      height: 3px;
+      background: var(--border);
+      border-radius: 1px;
+      cursor: pointer;
+      touch-action: none;
+      /* 扩大可点/拖区域 */
+      margin: 6px 0;
+    }
+
+    .progress-bar::before {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 20px;
+    }
+
+    .progress-bar:hover,
+    .progress-bar.is-dragging {
+      height: 5px;
+    }
+
+    .progress-filled {
+      position: relative;
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      border-radius: 1px;
+      pointer-events: none;
+    }
+
+    .progress-filled::after {
+      content: '';
+      position: absolute;
+      right: -6px;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      margin-top: -6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 2px rgba(10, 14, 20, 0.9);
+      opacity: 0;
+      transition: opacity 0.12s;
+    }
+
+    .progress-bar:hover .progress-filled::after,
+    .progress-bar.is-dragging .progress-filled::after {
+      opacity: 1;
+    }
+
+    .time-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 3px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 控制条：纯 emoji，无圆圈边框 */
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: nowrap;
+      gap: 6px;
+      padding: 6px 8px 8px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+    }
+
+    .controls-left {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+
+    .controls-right {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+      justify-content: flex-end;
+    }
+
+    /* 全屏：与"下一个"之间空隙更大 */
+    .fs-btn { margin-left: 16px; }
+
+    /* 文件夹（列表）按钮：紧跟全屏之后 */
+    .folder-btn { margin-left: 6px; }
+
+    /* YouTube 链接输入区：与文件夹按钮之间空隙更大 */
+    .url-inline {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 18px;
+      flex: 1;
+      min-width: 54px;
+      max-width: 240px;
+    }
+
+    .url-inline input {
+      flex: 1;
+      min-width: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 5px 7px;
+      color: var(--text);
+      font-size: 0.72rem;
+      outline: none;
+    }
+
+    .url-inline input:focus { border-color: var(--accent); }
+    .url-inline input::placeholder { color: #4a5a6c; }
+
+    .url-inline button {
+      flex-shrink: 0;
+      min-width: 28px;
+      min-height: 28px;
+      font-size: 1rem;
+      padding: 2px;
+      color: var(--gold);
+    }
+
+    .controls-center {
+      display: none; /* 竖屏进度仍在上方；横屏再显示 */
+      flex: 1;
+      align-items: center;
+      min-width: 0;
+      padding: 0 6px;
+    }
+
+    .controls-center .progress-bar {
+      flex: 1;
+      height: 3px;
+      background: var(--border);
+      border-radius: 1px;
+      cursor: pointer;
+      touch-action: none;
+      margin: 4px 0;
+    }
+
+    .controls-center .progress-filled {
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      border-radius: 1px;
+    }
+
+    .controls-center .time-inline {
+      display: flex;
+      gap: 4px;
+      font-size: 0.62rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+
+    .controls button {
+      width: auto;
+      height: auto;
+      min-width: 36px;
+      min-height: 36px;
+      border-radius: 0;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 1.25rem;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 4px;
+      transition: opacity 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .controls button:hover {
+      opacity: 0.85;
+      background: transparent;
+      border: none;
+    }
+
+    .controls button:active { transform: scale(0.92); }
+    .controls button:disabled {
+      opacity: 0.28;
+      cursor: not-allowed;
+    }
+
+    .controls .play {
+      width: auto;
+      height: auto;
+      border: none;
+      color: var(--gold);
+      font-size: 1.45rem;
+      padding: 4px 8px;
+    }
+
+    .controls .play:hover {
+      border: none;
+      background: transparent;
+      opacity: 0.9;
+    }
+
+    .list-panel {
+      width: 100%;
+      max-width: 900px;
+      margin-top: 14px;
+      display: none;
+    }
+
+    .list-panel.open { display: block; }
+
+    .list-panel h3 {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 8px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .card:hover,
+    .card.active { border-color: var(--gold-dim); }
+
+    .card.active { border-color: var(--gold); }
+
+    .card .thumb {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      background: #000;
+    }
+
+    .card .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .card .thumb .num {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      background: rgba(0,0,0,0.65);
+      color: #ccc;
+      font-size: 0.6rem;
+      padding: 1px 4px;
+      border-radius: 2px;
+    }
+
+    .card .name {
+      padding: 4px 6px;
+      font-size: 0.7rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .status {
+      margin-top: 6px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* 手机竖屏更紧凑 */
+    @media (max-width: 600px) {
+      body { padding: 8px 6px 20px; }
+      .brand { font-size: 0.66rem; margin-bottom: 8px; }
+      .controls { gap: 2px 6px; padding: 4px 4px 6px; }
+      .controls button { min-width: 32px; min-height: 32px; font-size: 1.15rem; padding: 4px 2px; }
+      .controls .play { font-size: 1.35rem; }
+      .title-bar { padding: 5px 8px; font-size: 0.7rem; }
+      .fs-btn { margin-left: 10px; }
+      .folder-btn { margin-left: 4px; }
+      .url-inline { margin-left: 10px; min-width: 44px; max-width: 150px; }
+      .url-inline input { padding: 4px 6px; font-size: 0.68rem; }
+      .url-inline button { min-width: 24px; min-height: 24px; font-size: 0.9rem; }
+    }
+
+    /* 横屏：左播放 · 中进度 · 右全屏/缩放，单行不挤 */
+    @media (orientation: landscape) {
+      body {
+        padding: 4px 8px 6px;
+        justify-content: flex-start;
+      }
+      .brand { margin-bottom: 4px; font-size: 0.64rem; }
+      .title-bar { padding: 2px 8px; font-size: 0.68rem; }
+
+      /* 上方独立进度条隐藏，并入控制条中间 */
+      .progress-area { display: none !important; }
+      .controls-center { display: flex; }
+
+      .controls {
+        flex-wrap: nowrap;
+        gap: 4px;
+        padding: 3px 6px 4px;
+        min-height: 36px;
+      }
+      .controls button {
+        min-width: 30px;
+        min-height: 30px;
+        font-size: 1.08rem;
+        padding: 2px;
+      }
+      .controls .play { font-size: 1.22rem; padding: 2px 6px; }
+      .fs-btn { margin-left: 10px; }
+      .folder-btn { margin-left: 4px; }
+      .url-inline { margin-left: 10px; min-width: 44px; max-width: 150px; }
+      .url-inline input { padding: 3px 6px; font-size: 0.68rem; }
+      .url-inline button { min-width: 24px; min-height: 24px; font-size: 0.9rem; }
+      .list-panel { margin-top: 6px; }
+
+      .stage {
+        aspect-ratio: auto;
+        height: min(72vh, calc(100dvh - 96px));
+        max-height: calc(100dvh - 88px);
+      }
+    }
+
+    /* 矮横屏（手机横过来）再压一点 */
+    @media (orientation: landscape) and (max-height: 420px) {
+      .brand { margin-bottom: 2px; }
+      .title-bar { display: none; }
+      .controls { padding: 2px 4px 3px; min-height: 32px; }
+      .controls button { min-width: 28px; min-height: 28px; font-size: 1rem; }
+      .controls .play { font-size: 1.12rem; }
+      .stage {
+        height: min(78vh, calc(100dvh - 72px));
+        max-height: calc(100dvh - 68px);
+      }
+    }
