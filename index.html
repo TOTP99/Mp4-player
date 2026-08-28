@@ -2,7 +2,8 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#05070b" />
   <title>电影院</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -21,13 +22,13 @@
 
       <div class="stage-outer">
         <div class="stage" id="stage">
-          <video id="player" playsinline></video>
+          <video id="player" playsinline preload="metadata"></video>
           <iframe id="ytFrame" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
           <div class="placeholder" id="placeholder">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
             </svg>
-            <span>选择本地视频或粘贴 YouTube 链接</span>
+            <span>选择视频或粘贴 YouTube 链接</span>
           </div>
         </div>
       </div>
@@ -42,7 +43,6 @@
         </div>
       </div>
 
-      <!-- 播放控制条：左（上一个/播放/下一个）· 中（进度条，仅横屏显示）· 右（全屏 → 文件夹列表 → YouTube 链接输入） -->
       <div class="controls">
         <div class="controls-left">
           <button id="prevBtn" title="上一个 (←)" disabled>⏮</button>
@@ -61,24 +61,23 @@
         </div>
         <div class="controls-right">
           <button id="fsBtn" class="fs-btn" title="全屏 (F)">⛶</button>
-          <button id="toggleListBtn" class="folder-btn" title="本地列表">📁</button>
+          <button id="toggleListBtn" class="folder-btn" title="视频列表">📁</button>
           <div class="url-inline">
-            <input type="url" id="urlInput" placeholder="YouTube 链接" />
+            <input type="url" id="urlInput" placeholder="YouTube 链接" autocomplete="off" />
             <button id="playUrlBtn" title="播放链接">▶</button>
           </div>
         </div>
       </div>
     </div>
   </div>
+
   <div class="list-panel" id="listPanel">
-    <h3>本地视频 · 1.mp4 ~ 56.mp4</h3>
+    <h3>远程视频 · 1.mp4 ~ 56.mp4</h3>
     <div class="grid" id="grid"></div>
     <div class="status" id="status"></div>
   </div>
 
-
-  <!-- 按功能拆分为多个脚本，普通 <script>（非 module）以便 file:// 双击直接可用；
-       彼此通过顶层变量/函数共享作用域，因此加载顺序不可打乱 -->
+  <!-- 加载顺序不可打乱：顶层共享作用域，支持 file:// 或任意静态托管 -->
   <script src="state.js"></script>
   <script src="db.js"></script>
   <script src="utils.js"></script>
