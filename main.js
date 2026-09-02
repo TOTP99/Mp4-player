@@ -1,6 +1,7 @@
 /*
  * main.js —— 启动：缓存秒开 → 后台 HEAD 探测远程视频 → 合并列表 → 恢复进度
  * 策略：只增不减；探测失败不删已有；慢网下先显示缓存再增量更新
+ * 刷新/增量合并时尽量不打断正在播放的视频
  */
 const videoUrl = name => BASE_URL + name;
 const allVideoNames = () => Array.from({ length: MAX }, (_, i) => i + 1 + '.mp4');
@@ -61,6 +62,29 @@ const probeAll = async () => {
   return scanned;
 };
 
+/** 当前 <video> 是否正在播指定文件名 */
+const isPlayingFile = file => {
+  if (!file || mode !== 'local') return false;
+  const src = player.getAttribute('src') || '';
+  return src === BASE_URL + file || src.endsWith('/' + file) || src.endsWith(file);
+};
+
+/**
+ * 列表变了但还在播同一文件：只同步 index / 按钮 / 高亮 / 序号，不重载 src
+ */
+const syncPlayingUI = file => {
+  const idx = videoList.indexOf(file);
+  if (idx < 0) return;
+  currentIndex = idx;
+  prevBtn.disabled = idx <= 0;
+  nextBtn.disabled = idx >= videoList.length - 1;
+  nowPlaying.textContent = file;
+  updatePosInfo();
+  grid.querySelectorAll('.card').forEach(c => {
+    c.classList.toggle('active', c.dataset.file === file);
+  });
+};
+
 /**
  * 扫描远程目录并与当前列表合并（只增不减）。
  * restoreOnFirst：合并后若此前列表为空，则尝试恢复上次播放进度（用于启动时首次扫描）。
@@ -72,6 +96,10 @@ const scanVideos = async ({ restoreOnFirst = false } = {}) => {
   scanBar?.classList.add('active');
   try {
     const before = videoList;
+    // 合并前记下正在播的文件，避免 videoList 替换后 index 对不上
+    const playingFile =
+      mode === 'local' && currentIndex >= 0 ? before[currentIndex] : null;
+
     const scanned = await probeAll();
 
     const merged = Array.from(new Set([...before, ...scanned])).sort(
@@ -87,10 +115,15 @@ const scanVideos = async ({ restoreOnFirst = false } = {}) => {
       try {
         await idbSet('state', 'knownVideos', merged);
       } catch {}
-      await showList(restoreOnFirst && !before.length);
+      // 启动且此前无缓存：恢复进度；否则只重绘列表并尽量保持当前播放
+      if (restoreOnFirst && !before.length) {
+        await showList({ restore: true });
+      } else {
+        await showList({ keepFile: playingFile });
+      }
     } else if (restoreOnFirst && !before.length && merged.length) {
       videoList = merged;
-      await showList(true);
+      await showList({ restore: true });
     }
 
     return { addedCount: merged.length - before.length, changed: !same };
@@ -100,11 +133,16 @@ const scanVideos = async ({ restoreOnFirst = false } = {}) => {
   }
 };
 
-/** 渲染卡片列表；restoreState 为 true 时尝试恢复上次进度 */
-const showList = async restoreState => {
+/**
+ * 渲染卡片列表。
+ * - restore: 启动时从 IDB 恢复上次播放
+ * - keepFile: 刷新/增量时尽量保持该文件继续播，不跳回第一集
+ */
+const showList = async ({ restore = false, keepFile = null } = {}) => {
   if (!videoList.length) {
     status.textContent = '未发现可用视频（远程 1.mp4 ~ 56.mp4）';
     grid.innerHTML = '';
+    updatePosInfo();
     return;
   }
   status.textContent = '共 ' + videoList.length + ' 个视频';
@@ -113,14 +151,50 @@ const showList = async restoreState => {
   cards.forEach(c => grid.appendChild(c));
   await refreshAllThumbs();
 
-  if (restoreState) {
+  // 1) 启动恢复
+  if (restore) {
     const state = await loadState();
     if (state?.file && videoList.includes(state.file)) {
-      openLocal(videoList.indexOf(state.file), state.time);
+      const idx = videoList.indexOf(state.file);
+      const t =
+        state.byFile && typeof state.byFile[state.file] === 'number'
+          ? state.byFile[state.file]
+          : state.time;
+      openLocal(idx, t);
       return;
     }
   }
-  // 无有效恢复时默认打开第一个
+
+  // 2) 刷新/增量：当前文件还在列表里 → 不打断
+  if (keepFile && videoList.includes(keepFile)) {
+    if (isPlayingFile(keepFile)) {
+      syncPlayingUI(keepFile);
+      return;
+    }
+    // 记下了 keepFile 但实际没在播（少见）→ 打开它并读保存进度
+    openLocal(videoList.indexOf(keepFile));
+    return;
+  }
+
+  // 3) 仍在本地播放且文件还在（keepFile 为空时的兜底）
+  if (mode === 'local' && currentIndex >= 0) {
+    const cur = videoList[currentIndex];
+    if (cur && isPlayingFile(cur)) {
+      syncPlayingUI(cur);
+      return;
+    }
+    // index 可能已错位：用 src 反查
+    const src = player.getAttribute('src') || '';
+    const hit = videoList.find(
+      n => src === BASE_URL + n || src.endsWith('/' + n) || src.endsWith(n)
+    );
+    if (hit) {
+      syncPlayingUI(hit);
+      return;
+    }
+  }
+
+  // 4) 没有任何可保持的播放 → 默认第一集
   if (videoList.length) openLocal(0);
 };
 
@@ -152,7 +226,7 @@ const showList = async restoreState => {
 
   if (known.length) {
     videoList = known;
-    await showList(true);
+    await showList({ restore: true });
   } else {
     status.textContent = '正在扫描远程视频…';
   }

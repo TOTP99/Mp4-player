@@ -23,6 +23,7 @@ const player = $('player');
 const ytFrame = $('ytFrame');
 const placeholder = $('placeholder');
 const nowPlaying = $('nowPlaying');
+const posInfo = $('posInfo');
 const playBtn = $('playBtn');
 const prevBtn = $('prevBtn');
 const nextBtn = $('nextBtn');
@@ -36,6 +37,7 @@ const progressFilledLand = $('progressFilledLand');
 const currentTimeLand = $('currentTimeLand');
 const durationLand = $('durationLand');
 const fsBtn = $('fsBtn');
+const stage = $('stage');
 const screenWrap = document.querySelector('.screen-wrap');
 const clockEl = $('clock');
 
@@ -52,6 +54,18 @@ const setProgressUI = (pct, cur, dur) => {
   durationEl.textContent = d;
   if (currentTimeLand) currentTimeLand.textContent = c;
   if (durationLand) durationLand.textContent = d;
+};
+
+/** 标题栏右侧：当前序号 / 总数（仅本地模式） */
+const updatePosInfo = () => {
+  if (!posInfo) return;
+  if (mode === 'local' && currentIndex >= 0 && videoList.length) {
+    posInfo.textContent = currentIndex + 1 + ' / ' + videoList.length;
+    posInfo.hidden = false;
+  } else {
+    posInfo.textContent = '';
+    posInfo.hidden = true;
+  }
 };
 
 // ---- 全局状态 ----

@@ -36,7 +36,12 @@ const createCard = async name => {
 
   card.addEventListener('click', () => {
     const i = videoList.indexOf(name);
-    if (i >= 0) openLocal(i);
+    if (i < 0) return;
+    // 已是当前片：不重载
+    if (mode === 'local' && i === currentIndex) return;
+    // 切片前先落盘，避免丢掉上一集进度
+    saveState();
+    openLocal(i);
   });
   return card;
 };

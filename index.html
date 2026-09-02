@@ -22,6 +22,7 @@
     <div class="screen-inner">
       <div class="title-bar">
         <span class="now" id="nowPlaying">准备播放</span>
+        <span class="pos" id="posInfo" hidden></span>
       </div>
 
       <div class="stage-outer">
@@ -69,11 +70,12 @@
             <button id="refreshBtn" title="刷新视频列表 (R)">🔄</button>
             <button id="toggleListBtn" class="folder-btn" title="视频列表">📁</button>
           </div>
-          <div class="url-inline">
-            <input type="url" id="urlInput" placeholder="YouTube 链接" autocomplete="off" />
-            <button id="playUrlBtn" title="播放链接">▶</button>
-          </div>
         </div>
+      </div>
+
+      <div class="url-row">
+        <input type="url" id="urlInput" placeholder="粘贴 YouTube 链接" autocomplete="off" />
+        <button id="playUrlBtn" title="播放链接">▶</button>
       </div>
     </div>
   </div>

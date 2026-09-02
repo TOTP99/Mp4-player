@@ -1,10 +1,9 @@
 /*
- * events.js —— 按钮、播放器、进度条拖拽、键盘快捷键
+ * events.js —— 按钮、播放器、进度条拖拽、键盘快捷键、左右滑动换片
  */
 playUrlBtn.addEventListener('click', () => {
   const id = ytId(urlInput.value.trim());
   if (!id) return alert('无法识别 YouTube 链接');
-  nowPlaying.textContent = 'YouTube · ' + id;
   showYT(id);
 });
 
@@ -32,6 +31,8 @@ refreshBtn.addEventListener('click', async () => {
       status.textContent = result.changed
         ? '共 ' + videoList.length + ' 个视频（新增 ' + result.addedCount + ' 个）'
         : '共 ' + videoList.length + ' 个视频（无新增）';
+      // 列表变长时刷新标题栏序号/总数（当前片可能还在播）
+      updatePosInfo();
     } else {
       status.textContent = prevStatus;
     }
@@ -59,6 +60,8 @@ player.addEventListener('pause', () => {
 });
 player.addEventListener('ended', () => {
   playBtn.textContent = '▶';
+  // 播完：进度记为 0，下次该片从头播
+  saveState();
   tryCapture();
 });
 player.addEventListener('timeupdate', () => {
@@ -75,7 +78,7 @@ player.addEventListener('loadedmetadata', () => {
   );
 });
 
-// 双击画面 → 设为代表图（覆盖）
+// 双击画面 → 设为代表图（覆盖）；不改动右侧序号
 player.addEventListener('dblclick', async e => {
   e.preventDefault();
   const ok = await setThumbFromCurrent();
@@ -87,6 +90,49 @@ player.addEventListener('dblclick', async e => {
     }, 1200);
   }
 });
+
+// ---- 画面左右滑动换视频（仅本地模式） ----
+let swipeStartX = 0;
+let swipeStartY = 0;
+let swipeTracking = false;
+
+if (stage) {
+  stage.addEventListener(
+    'touchstart',
+    e => {
+      if (mode !== 'local' || e.touches.length !== 1) return;
+      swipeStartX = e.touches[0].clientX;
+      swipeStartY = e.touches[0].clientY;
+      swipeTracking = true;
+    },
+    { passive: true }
+  );
+
+  stage.addEventListener(
+    'touchend',
+    e => {
+      if (!swipeTracking || mode !== 'local') return;
+      swipeTracking = false;
+      const t = e.changedTouches?.[0];
+      if (!t) return;
+      const dx = t.clientX - swipeStartX;
+      const dy = t.clientY - swipeStartY;
+      // 水平位移足够大，且明显大于竖直，才算换片手势
+      if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+      if (dx < 0) playNext();
+      else playPrev();
+    },
+    { passive: true }
+  );
+
+  stage.addEventListener(
+    'touchcancel',
+    () => {
+      swipeTracking = false;
+    },
+    { passive: true }
+  );
+}
 
 // ---- 进度条拖拽（pointer + touch 兼容） ----
 let seeking = false;
@@ -163,7 +209,15 @@ const bindSeekBar = bar => {
 bindSeekBar(progressBar);
 bindSeekBar(progressBarLand);
 
-setInterval(saveState, 5000);
+// 定时落盘 + 切到后台 / 关页时再存一次，避免丢进度
+setInterval(saveState, 4000);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveState();
+});
+window.addEventListener('pagehide', () => {
+  saveState();
+});
 
 // ---- 键盘（输入框聚焦时忽略） ----
 document.addEventListener('keydown', e => {
