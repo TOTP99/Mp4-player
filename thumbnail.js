@@ -89,10 +89,10 @@ const applyThumbToCard = (card, srcInfo) => {
   img.decoding = 'async';
 };
 
-const updateCardThumb = async name => {
+const updateCardThumb = async (name, rec) => {
   const card = grid.querySelector(`[data-file="${name}"]`);
   if (!card) return;
-  const rec = await getThumbRecord(name);
+  if (rec === undefined) rec = await getThumbRecord(name);
   const srcInfo = recordToSrc(rec);
   if (srcInfo) applyThumbToCard(card, srcInfo);
 };
@@ -129,9 +129,11 @@ const tryCapture = async () => {
   if (mode !== 'local' || currentIndex < 0) return;
   const name = videoList[currentIndex];
   if (captured.has(name) || player.currentTime < 0.8) return;
-  if (await hasThumb(name)) {
+  // 只查一次 IDB：有记录就直接拿来用，不再多查一次 hasThumb()
+  const rec = await getThumbRecord(name);
+  if (rec) {
     captured.add(name);
-    await updateCardThumb(name);
+    await updateCardThumb(name, rec);
     return;
   }
   await setThumbFromCurrent();
