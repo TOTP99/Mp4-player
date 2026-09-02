@@ -20,6 +20,27 @@ toggleListBtn.addEventListener('click', async () => {
   if (open) refreshAllThumbs();
 });
 
+refreshBtn.addEventListener('click', async () => {
+  if (scanning) return;
+  refreshBtn.disabled = true;
+  refreshBtn.classList.add('spinning');
+  const prevStatus = status.textContent;
+  status.textContent = '正在刷新视频列表…';
+  try {
+    const result = await scanVideos();
+    if (result) {
+      status.textContent = result.changed
+        ? '共 ' + videoList.length + ' 个视频（新增 ' + result.addedCount + ' 个）'
+        : '共 ' + videoList.length + ' 个视频（无新增）';
+    } else {
+      status.textContent = prevStatus;
+    }
+  } finally {
+    refreshBtn.disabled = false;
+    refreshBtn.classList.remove('spinning');
+  }
+});
+
 playBtn.addEventListener('click', togglePlay);
 prevBtn.addEventListener('click', playPrev);
 nextBtn.addEventListener('click', playNext);
@@ -166,6 +187,11 @@ document.addEventListener('keydown', e => {
     case 'F':
       e.preventDefault();
       toggleFullscreen();
+      break;
+    case 'r':
+    case 'R':
+      e.preventDefault();
+      refreshBtn.click();
       break;
   }
 });

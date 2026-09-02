@@ -3,6 +3,7 @@
  * 策略：只增不减；探测失败不删已有；慢网下先显示缓存再增量更新
  */
 const videoUrl = name => BASE_URL + name;
+const allVideoNames = () => Array.from({ length: MAX }, (_, i) => i + 1 + '.mp4');
 
 /** HEAD 探测（快、省流量）；失败再 fallback 到 video metadata */
 const exists = async name => {
@@ -36,6 +37,67 @@ const exists = async name => {
     setTimeout(() => done(false), 3500);
     v.src = url;
   });
+};
+
+/** 是否正在扫描（供 events.js 判断，防止重复点击刷新） */
+let scanning = false;
+
+/** 并发探测 1.mp4 ~ MAX.mp4，返回本轮探测到存在的文件名数组 */
+const probeAll = async () => {
+  const allNames = allVideoNames();
+  const CONCURRENCY = 6;
+  const scanned = [];
+  let cursor = 0;
+
+  const worker = async () => {
+    while (cursor < allNames.length) {
+      const i = cursor++;
+      const name = allNames[i];
+      if (await exists(name)) scanned.push(name);
+    }
+  };
+
+  await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+  return scanned;
+};
+
+/**
+ * 扫描远程目录并与当前列表合并（只增不减）。
+ * restoreOnFirst：合并后若此前列表为空，则尝试恢复上次播放进度（用于启动时首次扫描）。
+ * 手动点刷新时不传，走"仅刷新列表不打断当前播放"的分支。
+ */
+const scanVideos = async ({ restoreOnFirst = false } = {}) => {
+  if (scanning) return;
+  scanning = true;
+  scanBar?.classList.add('active');
+  try {
+    const before = videoList;
+    const scanned = await probeAll();
+
+    const merged = Array.from(new Set([...before, ...scanned])).sort(
+      (a, b) => parseInt(a, 10) - parseInt(b, 10)
+    );
+
+    const same =
+      merged.length === videoList.length &&
+      merged.every((n, i) => n === videoList[i]);
+
+    if (!same) {
+      videoList = merged;
+      try {
+        await idbSet('state', 'knownVideos', merged);
+      } catch {}
+      await showList(restoreOnFirst && !before.length);
+    } else if (restoreOnFirst && !before.length && merged.length) {
+      videoList = merged;
+      await showList(true);
+    }
+
+    return { addedCount: merged.length - before.length, changed: !same };
+  } finally {
+    scanning = false;
+    scanBar?.classList.remove('active');
+  }
 };
 
 /** 渲染卡片列表；restoreState 为 true 时尝试恢复上次进度 */
@@ -79,7 +141,7 @@ const showList = async restoreState => {
     }
   } catch {}
 
-  const allNames = Array.from({ length: MAX }, (_, i) => i + 1 + '.mp4');
+  const allNames = allVideoNames();
 
   // 1) 缓存秒开：先用上次记住的列表立刻渲染
   let known = [];
@@ -96,39 +158,5 @@ const showList = async restoreState => {
   }
 
   // 2) 后台并行探测（限制并发，避免慢网打爆）
-  const CONCURRENCY = 6;
-  const scanned = [];
-  let cursor = 0;
-
-  const worker = async () => {
-    while (cursor < allNames.length) {
-      const i = cursor++;
-      const name = allNames[i];
-      if (await exists(name)) scanned.push(name);
-    }
-  };
-
-  await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
-
-  // 只增不减：合并并排序
-  const merged = Array.from(new Set([...known, ...scanned])).sort(
-    (a, b) => parseInt(a, 10) - parseInt(b, 10)
-  );
-
-  const same =
-    merged.length === videoList.length &&
-    merged.every((n, i) => n === videoList[i]);
-
-  if (!same) {
-    videoList = merged;
-    try {
-      await idbSet('state', 'knownVideos', merged);
-    } catch {}
-    // 若之前没有缓存列表，现在才做首次恢复；否则仅刷新列表不打断当前播放
-    await showList(!known.length);
-  } else if (!known.length && merged.length) {
-    // 极端：首次扫描成功但 known 为空（理论不会到这）
-    videoList = merged;
-    await showList(true);
-  }
+  await scanVideos({ restoreOnFirst: true });
 })();

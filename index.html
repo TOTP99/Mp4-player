@@ -15,6 +15,10 @@
   </div>
 
   <div class="screen-wrap">
+    <span class="corner corner-tl" aria-hidden="true"></span>
+    <span class="corner corner-tr" aria-hidden="true"></span>
+    <span class="corner corner-bl" aria-hidden="true"></span>
+    <span class="corner corner-br" aria-hidden="true"></span>
     <div class="screen-inner">
       <div class="title-bar">
         <span class="now" id="nowPlaying">准备播放</span>
@@ -44,7 +48,7 @@
       </div>
 
       <div class="controls">
-        <div class="controls-left">
+        <div class="controls-left btn-group">
           <button id="prevBtn" title="上一个 (←)" disabled>⏮</button>
           <button class="play" id="playBtn" title="播放/暂停 (空格)">▶</button>
           <button id="nextBtn" title="下一个 (→)" disabled>⏭</button>
@@ -60,8 +64,11 @@
           </div>
         </div>
         <div class="controls-right">
-          <button id="fsBtn" class="fs-btn" title="全屏 (F)">⛶</button>
-          <button id="toggleListBtn" class="folder-btn" title="视频列表">📁</button>
+          <div class="btn-group">
+            <button id="fsBtn" class="fs-btn" title="全屏 (F)">⛶</button>
+            <button id="refreshBtn" title="刷新视频列表 (R)">🔄</button>
+            <button id="toggleListBtn" class="folder-btn" title="视频列表">📁</button>
+          </div>
           <div class="url-inline">
             <input type="url" id="urlInput" placeholder="YouTube 链接" autocomplete="off" />
             <button id="playUrlBtn" title="播放链接">▶</button>
@@ -73,6 +80,7 @@
 
   <div class="list-panel" id="listPanel">
     <h3>远程视频 · 1.mp4 ~ 56.mp4</h3>
+    <div class="scan-bar" id="scanBar" aria-hidden="true"><span></span></div>
     <div class="grid" id="grid"></div>
     <div class="status" id="status"></div>
   </div>
