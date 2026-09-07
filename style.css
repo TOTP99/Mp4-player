@@ -307,6 +307,17 @@ body {
   justify-content: flex-end;
 }
 
+/* 🔢 顺序播放开关：常驻在控制条中间（竖屏时天然居中的空位；横屏时挤在进度条左侧） */
+.mid-btn {
+  flex-shrink: 0;
+}
+.mid-btn.active {
+  color: var(--gold-bright);
+  background: rgba(232, 197, 106, 0.16);
+  border-color: rgba(232, 197, 106, 0.4);
+  box-shadow: 0 0 8px rgba(232, 197, 106, 0.25);
+}
+
 /* 同类按键收紧成一个胶囊组；不同组之间靠 gap/margin 拉开距离 */
 .btn-group {
   display: flex;

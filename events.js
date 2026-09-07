@@ -19,6 +19,14 @@ toggleListBtn.addEventListener('click', async () => {
   if (open) refreshAllThumbs();
 });
 
+// 🔢 顺序播放开关：开启后，当前集播完自动接下一集（到末尾回到第一集）
+loopBtn?.addEventListener('click', async () => {
+  sequentialPlay = !sequentialPlay;
+  loopBtn.classList.toggle('active', sequentialPlay);
+  loopBtn.title = sequentialPlay ? '顺序播放（开，点击关闭）' : '顺序播放（关，点击开启）';
+  await saveUI({ sequentialPlay });
+});
+
 refreshBtn.addEventListener('click', async () => {
   if (scanning) return;
   refreshBtn.disabled = true;
@@ -63,6 +71,8 @@ player.addEventListener('ended', () => {
   // 播完：进度记为 0，下次该片从头播
   saveState();
   tryCapture();
+  // 🔢 顺序播放开启时，自动接下一集
+  if (sequentialPlay) playNextSequential();
 });
 player.addEventListener('timeupdate', () => {
   if (seeking) return;

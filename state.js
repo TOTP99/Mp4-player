@@ -15,6 +15,7 @@ const urlInput = $('urlInput');
 const playUrlBtn = $('playUrlBtn');
 const toggleListBtn = $('toggleListBtn');
 const refreshBtn = $('refreshBtn');
+const loopBtn = $('loopBtn');
 const listPanel = $('listPanel');
 const grid = $('grid');
 const scanBar = $('scanBar');
@@ -72,6 +73,7 @@ const updatePosInfo = () => {
 let videoList = [];
 let currentIndex = -1;
 let mode = null; // 'local' | 'youtube' | null
+let sequentialPlay = false; // 🔢 顺序播放：一集播完自动接下一集（到末尾回到第一集）
 const captured = new Set();
 let db = null;
 

@@ -168,3 +168,11 @@ const playNext = () => {
     openLocal(currentIndex + 1);
   }
 };
+
+/** 🔢 顺序播放：一集播完后自动接下一集；播到最后一集则回到第一集 */
+const playNextSequential = () => {
+  if (mode !== 'local' || !videoList.length) return;
+  saveState();
+  const next = currentIndex + 1 < videoList.length ? currentIndex + 1 : 0;
+  openLocal(next);
+};

@@ -205,13 +205,18 @@ const showList = async ({ restore = false, keepFile = null } = {}) => {
     console.warn('IndexedDB', e);
   }
 
-  // 恢复 UI 偏好（列表展开状态）
+  // 恢复 UI 偏好（列表展开状态、顺序播放开关）
   try {
     const ui = await loadUI();
     if (ui.listOpen) {
       listPanel.classList.add('open');
       toggleListBtn.textContent = '📂';
       toggleListBtn.title = '收起列表';
+    }
+    if (ui.sequentialPlay) {
+      sequentialPlay = true;
+      loopBtn?.classList.add('active');
+      if (loopBtn) loopBtn.title = '顺序播放（开，点击关闭）';
     }
   } catch {}
 
