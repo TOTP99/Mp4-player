@@ -169,9 +169,19 @@ const playNext = () => {
   }
 };
 
-/** 🔢 顺序播放：一集播完后自动接下一集；播到最后一集则回到第一集 */
+/** 连续跳过失败次数；成功播出（play 事件）时清零，防止全列表挂掉时死循环 */
+let sequentialSkipCount = 0;
+
+/** 🔢 连续循环：一集播完（或加载失败）后自动下一集；末尾回到第一集 */
 const playNextSequential = () => {
   if (mode !== 'local' || !videoList.length) return;
+  sequentialSkipCount += 1;
+  // 整圈都失败就停，避免 error → next → error 死循环
+  if (sequentialSkipCount > videoList.length) {
+    sequentialSkipCount = 0;
+    playBtn.textContent = '▶';
+    return;
+  }
   saveState();
   const next = currentIndex + 1 < videoList.length ? currentIndex + 1 : 0;
   openLocal(next);

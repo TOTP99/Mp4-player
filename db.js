@@ -66,3 +66,28 @@ async function saveUI(partial) {
     await idbSet('state', 'ui', { ...cur, ...partial });
   } catch {}
 }
+
+/** 一次读出某 store 全部 [key, value]（用于批量刷缩略图） */
+function idbEntries(store) {
+  return new Promise(resolve => {
+    if (!db) return resolve([]);
+    try {
+      const tx = db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).openCursor();
+      const out = [];
+      req.onsuccess = e => {
+        const cursor = e.target.result;
+        if (cursor) {
+          out.push([cursor.key, cursor.value]);
+          cursor.continue();
+        } else {
+          resolve(out);
+        }
+      };
+      req.onerror = () => resolve([]);
+    } catch {
+      resolve([]);
+    }
+  });
+}
+

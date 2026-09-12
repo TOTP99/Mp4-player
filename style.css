@@ -307,7 +307,7 @@ body {
   justify-content: flex-end;
 }
 
-/* 🔢 顺序播放开关：常驻在控制条中间（竖屏时天然居中的空位；横屏时挤在进度条左侧） */
+/* 🔢 连续循环播放开关：默认细金圈；开启后细红圈（无发光） */
 .mid-btn {
   flex-shrink: 0;
   width: 38px;
@@ -316,13 +316,28 @@ body {
   min-height: 38px;
   padding: 0;
   border-radius: 50%;
-  border: 1.5px solid var(--border);
+  border: 1.5px solid var(--gold);
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+}
+.mid-btn:hover {
+  color: var(--gold-bright);
+  background: rgba(232, 197, 106, 0.1);
+  border-color: var(--gold-bright);
+  box-shadow: none;
 }
 .mid-btn.active {
   color: #ff5252;
-  background: rgba(255, 82, 82, 0.16);
+  background: transparent;
   border-color: #ff5252;
-  box-shadow: 0 0 8px rgba(255, 82, 82, 0.4);
+  box-shadow: none;
+}
+.mid-btn.active:hover {
+  color: #ff6b6b;
+  background: rgba(255, 82, 82, 0.1);
+  border-color: #ff6b6b;
+  box-shadow: none;
 }
 
 /* 同类按键收紧成一个胶囊组；不同组之间靠 gap/margin 拉开距离 */

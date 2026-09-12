@@ -19,11 +19,13 @@ toggleListBtn.addEventListener('click', async () => {
   if (open) refreshAllThumbs();
 });
 
-// 🔢 顺序播放开关：开启后，当前集播完自动接下一集（到末尾回到第一集）
+// 🔢 连续循环播放开关：开启后播完自动下一集并循环；加载失败也跳过下一集
 loopBtn?.addEventListener('click', async () => {
   sequentialPlay = !sequentialPlay;
   loopBtn.classList.toggle('active', sequentialPlay);
-  loopBtn.title = sequentialPlay ? '顺序播放（开，点击关闭）' : '顺序播放（关，点击开启）';
+  loopBtn.title = sequentialPlay
+    ? '连续循环播放（开）'
+    : '连续循环播放（关）';
   await saveUI({ sequentialPlay });
 });
 
@@ -60,6 +62,7 @@ document.addEventListener('webkitfullscreenchange', syncFsBtn);
 // ---- <video> 事件 ----
 player.addEventListener('play', () => {
   playBtn.textContent = '⏸';
+  sequentialSkipCount = 0; // 成功开始播放，清零失败跳过计数
 });
 player.addEventListener('pause', () => {
   playBtn.textContent = '▶';
@@ -71,14 +74,23 @@ player.addEventListener('ended', () => {
   // 播完：进度记为 0，下次该片从头播
   saveState();
   tryCapture();
-  // 🔢 顺序播放开启时，自动接下一集
+  // 🔢 连续循环开启时，自动接下一集（末尾回到第一集）
   if (sequentialPlay) playNextSequential();
 });
+// 加载失败（网速/404 等）：连续循环开启时跳过，播下一集
+player.addEventListener('error', () => {
+  if (mode !== 'local' || !sequentialPlay || !videoList.length) return;
+  playNextSequential();
+});
+// timeupdate 高频：仅更新进度条，节流 ~5 次/秒；截图与 timeupdate 解耦
+let lastProgressUI = 0;
 player.addEventListener('timeupdate', () => {
   if (seeking) return;
+  const now = performance.now();
+  if (now - lastProgressUI < 200) return;
+  lastProgressUI = now;
   const pct = player.duration ? (player.currentTime / player.duration) * 100 : 0;
   setProgressUI(pct, player.currentTime, player.duration || 0);
-  tryCapture();
 });
 player.addEventListener('loadedmetadata', () => {
   setProgressUI(
@@ -144,7 +156,7 @@ if (stage) {
   );
 }
 
-// ---- 进度条拖拽（pointer + touch 兼容） ----
+// ---- 进度条拖拽（优先 Pointer Events，旧环境 fallback touch） ----
 let seeking = false;
 let seekBar = null;
 
@@ -190,19 +202,26 @@ const onSeekEnd = e => {
 
 const bindSeekBar = bar => {
   if (!bar) return;
-  bar.addEventListener('pointerdown', e => {
-    if (e.button != null && e.button !== 0) return;
-    try {
-      bar.setPointerCapture(e.pointerId);
-    } catch {}
-    onSeekStart(bar, e);
-  });
-  bar.addEventListener('pointermove', e => {
-    if (!seeking || seekBar !== bar) return;
-    onSeekMove(e);
-  });
-  bar.addEventListener('pointerup', onSeekEnd);
-  bar.addEventListener('pointercancel', onSeekEnd);
+
+  // 现代浏览器：只用 Pointer Events，避免与 touch 双触发
+  if (typeof window.PointerEvent === 'function') {
+    bar.addEventListener('pointerdown', e => {
+      if (e.button != null && e.button !== 0) return;
+      try {
+        bar.setPointerCapture(e.pointerId);
+      } catch {}
+      onSeekStart(bar, e);
+    });
+    bar.addEventListener('pointermove', e => {
+      if (!seeking || seekBar !== bar) return;
+      onSeekMove(e);
+    });
+    bar.addEventListener('pointerup', onSeekEnd);
+    bar.addEventListener('pointercancel', onSeekEnd);
+    return;
+  }
+
+  // 旧环境 fallback：仅 touch
   bar.addEventListener('touchstart', e => onSeekStart(bar, e), { passive: false });
   bar.addEventListener(
     'touchmove',
@@ -218,6 +237,27 @@ const bindSeekBar = bar => {
 
 bindSeekBar(progressBar);
 bindSeekBar(progressBarLand);
+
+// 截图与 timeupdate 解耦：播放中每 3 秒尝试一次（pause/ended 仍会立即截）
+setInterval(() => {
+  if (mode === 'local' && !player.paused && !player.ended) tryCapture();
+}, 3000);
+
+// 列表卡片事件委托（cards.js 不再绑 click）
+// 已是当前片不重载；切片前落盘，避免丢进度
+if (grid) {
+  grid.addEventListener('click', e => {
+    const card = e.target.closest('.card');
+    if (!card || !grid.contains(card)) return;
+    const file = card.dataset.file;
+    if (!file || !videoList.length) return;
+    const idx = videoList.indexOf(file);
+    if (idx < 0) return;
+    if (mode === 'local' && idx === currentIndex) return;
+    saveState();
+    openLocal(idx);
+  });
+}
 
 // 定时落盘 + 切到后台 / 关页时再存一次，避免丢进度
 setInterval(saveState, 4000);

@@ -1,5 +1,6 @@
 /*
  * cards.js —— 本地（远程）视频列表卡片
+ * 点击由 events.js 在 #grid 上事件委托处理（避免每个 card 单独绑监听器）
  */
 const createCard = async name => {
   const card = document.createElement('div');
@@ -34,14 +35,5 @@ const createCard = async name => {
     }
   } catch {}
 
-  card.addEventListener('click', () => {
-    const i = videoList.indexOf(name);
-    if (i < 0) return;
-    // 已是当前片：不重载
-    if (mode === 'local' && i === currentIndex) return;
-    // 切片前先落盘，避免丢掉上一集进度
-    saveState();
-    openLocal(i);
-  });
   return card;
 };

@@ -73,7 +73,7 @@ const updatePosInfo = () => {
 let videoList = [];
 let currentIndex = -1;
 let mode = null; // 'local' | 'youtube' | null
-let sequentialPlay = false; // 🔢 顺序播放：一集播完自动接下一集（到末尾回到第一集）
+let sequentialPlay = false; // 🔢 连续循环播放：播完/失败自动下一集，末尾回到第一集
 const captured = new Set();
 let db = null;
 
