@@ -310,12 +310,19 @@ body {
 /* 🔢 顺序播放开关：常驻在控制条中间（竖屏时天然居中的空位；横屏时挤在进度条左侧） */
 .mid-btn {
   flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
 }
 .mid-btn.active {
-  color: var(--gold-bright);
-  background: rgba(232, 197, 106, 0.16);
-  border-color: rgba(232, 197, 106, 0.4);
-  box-shadow: 0 0 8px rgba(232, 197, 106, 0.25);
+  color: #ff5252;
+  background: rgba(255, 82, 82, 0.16);
+  border-color: #ff5252;
+  box-shadow: 0 0 8px rgba(255, 82, 82, 0.4);
 }
 
 /* 同类按键收紧成一个胶囊组；不同组之间靠 gap/margin 拉开距离 */
@@ -641,6 +648,12 @@ body {
     font-size: 1.18rem;
     padding: 4px 3px;
   }
+  .mid-btn {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+  }
   .controls .play {
     font-size: 1.38rem;
   }
@@ -709,6 +722,12 @@ body {
     font-size: 1.12rem;
     padding: 2px;
   }
+  .mid-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+  }
   .controls .play {
     font-size: 1.28rem;
     padding: 2px 8px;
@@ -751,6 +770,12 @@ body {
     min-width: 30px;
     min-height: 30px;
     font-size: 1.05rem;
+  }
+  .mid-btn {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    min-height: 30px;
   }
   .controls .play {
     font-size: 1.18rem;
