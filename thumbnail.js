@@ -8,9 +8,8 @@
  */
 const safeFileSel = name => {
   try {
-    return typeof CSS !== 'undefined' && CSS.escape
-      ? safeFileSel(name)
-      : String(name).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    if (typeof CSS !== 'undefined' && CSS.escape) return CSS.escape(name);
+    return String(name).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   } catch {
     return String(name).replace(/"/g, '');
   }
@@ -62,9 +61,6 @@ function recordToSrc(rec) {
   return null;
 }
 
-async function hasThumb(name) {
-  return !!(await getThumbRecord(name));
-}
 
 /** 直接存 Blob；若传入 dataURL 则降级转换 */
 async function saveThumb(name, data) {
@@ -116,20 +112,6 @@ const captureBlob = () =>
     }
   });
 
-/** 兼容旧调用：仍返回 dataURL（仅双击手动设代表图等少量路径） */
-const capture = () => {
-  try {
-    if (!player.videoWidth) return null;
-    const scale = Math.min(1, THUMB_MAX_W / player.videoWidth);
-    const w = Math.max(1, Math.round(player.videoWidth * scale));
-    const h = Math.max(1, Math.round(player.videoHeight * scale));
-    const { canvas, ctx } = getThumbSurface(w, h);
-    ctx.drawImage(player, 0, 0, w, h);
-    return canvas.toDataURL('image/jpeg', THUMB_QUALITY);
-  } catch {
-    return null;
-  }
-};
 
 const applyThumbToCard = (card, srcInfo) => {
   if (!card || !srcInfo?.src) return;
