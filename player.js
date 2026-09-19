@@ -5,6 +5,7 @@
  * - 每个本地视频各自记住进度（byFile）
  * - 同时记住「上次播放的是哪一集」（启动恢复）
  * - 触发点：暂停、换集、拖进度条结束、定时、页面隐藏/关闭
+ * - 默认防抖 ~1.2s；换集/暂停/关页等传 true 立即落盘
  */
 
 // 追踪当前挂起的 loadedmetadata 监听器：快速连续切换视频时，
@@ -46,7 +47,9 @@ async function getSavedTime(file) {
  * - byFile：每个文件各自的进度
  * 播到结尾附近时记 0，下次从头播。
  */
-async function saveState() {
+let _saveStateTimer = null;
+
+async function flushState() {
   if (mode !== 'local' || currentIndex < 0) return;
   const file = videoList[currentIndex];
   if (!file) return;
@@ -71,6 +74,22 @@ async function saveState() {
   } catch {}
 }
 
+/** @param {boolean} [immediate] 为 true 时取消防抖并立刻写入 */
+function saveState(immediate) {
+  if (immediate) {
+    if (_saveStateTimer) {
+      clearTimeout(_saveStateTimer);
+      _saveStateTimer = null;
+    }
+    return flushState();
+  }
+  if (_saveStateTimer) return;
+  _saveStateTimer = setTimeout(() => {
+    _saveStateTimer = null;
+    flushState();
+  }, 1200);
+}
+
 const hideAll = () => {
   player.style.display = 'none';
   ytFrame.style.display = 'none';
@@ -86,7 +105,7 @@ const showLocal = () => {
 
 const showYT = id => {
   // 切到 YouTube 前先把当前本地进度存好
-  saveState();
+  saveState(true);
   if (pendingMetaHandler) {
     player.removeEventListener('loadedmetadata', pendingMetaHandler);
     pendingMetaHandler = null;
@@ -157,14 +176,14 @@ const togglePlay = () => {
 
 const playPrev = () => {
   if (currentIndex > 0) {
-    saveState();
+    saveState(true);
     openLocal(currentIndex - 1);
   }
 };
 
 const playNext = () => {
   if (currentIndex < videoList.length - 1) {
-    saveState();
+    saveState(true);
     openLocal(currentIndex + 1);
   }
 };
@@ -182,7 +201,7 @@ const playNextSequential = () => {
     playBtn.textContent = '▶';
     return;
   }
-  saveState();
+  saveState(true);
   const next = currentIndex + 1 < videoList.length ? currentIndex + 1 : 0;
   openLocal(next);
 };

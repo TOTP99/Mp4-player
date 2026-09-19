@@ -66,13 +66,13 @@ player.addEventListener('play', () => {
 });
 player.addEventListener('pause', () => {
   playBtn.textContent = '▶';
-  saveState();
+  saveState(true);
   tryCapture();
 });
 player.addEventListener('ended', () => {
   playBtn.textContent = '▶';
   // 播完：进度记为 0，下次该片从头播
-  saveState();
+  saveState(true);
   tryCapture();
   // 🔢 连续循环开启时，自动接下一集（末尾回到第一集）
   if (sequentialPlay) playNextSequential();
@@ -197,7 +197,7 @@ const onSeekEnd = e => {
   if (seekBar) seekBar.classList.remove('is-dragging');
   seeking = false;
   seekBar = null;
-  saveState();
+  saveState(true);
 };
 
 const bindSeekBar = bar => {
@@ -238,10 +238,34 @@ const bindSeekBar = bar => {
 bindSeekBar(progressBar);
 bindSeekBar(progressBarLand);
 
-// 截图与 timeupdate 解耦：播放中每 3 秒尝试一次（pause/ended 仍会立即截）
-setInterval(() => {
-  if (mode === 'local' && !player.paused && !player.ended) tryCapture();
-}, 3000);
+// 截图 / 定时落盘：页面可见时跑，切到后台停掉（省电）
+let captureTimer = null;
+let saveTimer = null;
+
+const startBgTimers = () => {
+  if (!captureTimer) {
+    captureTimer = setInterval(() => {
+      if (mode === 'local' && !player.paused && !player.ended) tryCapture();
+    }, 3000);
+  }
+  if (!saveTimer) {
+    // 防抖版 saveState：约 1.2s 合并一次实际写入
+    saveTimer = setInterval(() => saveState(), 4000);
+  }
+};
+
+const stopBgTimers = () => {
+  if (captureTimer) {
+    clearInterval(captureTimer);
+    captureTimer = null;
+  }
+  if (saveTimer) {
+    clearInterval(saveTimer);
+    saveTimer = null;
+  }
+};
+
+startBgTimers();
 
 // 列表卡片事件委托（cards.js 不再绑 click）
 // 已是当前片不重载；切片前落盘，避免丢进度
@@ -254,19 +278,24 @@ if (grid) {
     const idx = videoList.indexOf(file);
     if (idx < 0) return;
     if (mode === 'local' && idx === currentIndex) return;
-    saveState();
+    saveState(true);
     openLocal(idx);
   });
 }
 
-// 定时落盘 + 切到后台 / 关页时再存一次，避免丢进度
-setInterval(saveState, 4000);
-
+// 切后台：立刻落盘 + 停时钟/截图/定时存；回前台再开
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') saveState();
+  if (document.visibilityState === 'hidden') {
+    saveState(true);
+    stopBgTimers();
+    stopClock();
+  } else {
+    startBgTimers();
+    startClock();
+  }
 });
 window.addEventListener('pagehide', () => {
-  saveState();
+  saveState(true);
 });
 
 // ---- 键盘（输入框聚焦时忽略） ----

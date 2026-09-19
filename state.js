@@ -93,9 +93,10 @@ let sequentialPlay = false; // 🔢 连续循环播放：播完/失败自动下�
 const captured = new Set();
 let db = null;
 
-// ---- 实时时钟 ----
+// ---- 实时时钟（后台可停，见 events.js visibilitychange） ----
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 const pad2 = n => String(n).padStart(2, '0');
+let clockTimer = null;
 const updateClock = () => {
   if (!clockEl) return;
   const now = new Date();
@@ -103,5 +104,14 @@ const updateClock = () => {
     `${now.getMonth() + 1}月${now.getDate()}日 星期${WEEKDAYS[now.getDay()]} ` +
     `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
 };
-updateClock();
-setInterval(updateClock, 1000);
+const startClock = () => {
+  if (clockTimer) return;
+  updateClock();
+  clockTimer = setInterval(updateClock, 1000);
+};
+const stopClock = () => {
+  if (!clockTimer) return;
+  clearInterval(clockTimer);
+  clockTimer = null;
+};
+startClock();
