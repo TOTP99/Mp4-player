@@ -45,16 +45,32 @@ const clockEl = $('clock');
 // 远程视频需 CORS 才能截缩略图
 player.crossOrigin = 'anonymous';
 
+// 进度条：缓存上次文案，同秒不重复写 DOM；横竖屏两套都写（CSS 控制可见性）
+let _lastProgressCur = '';
+let _lastProgressDur = '';
+let _lastProgressPct = -1;
+
 const setProgressUI = (pct, cur, dur) => {
-  const w = pct + '%';
-  progressFilled.style.width = w;
-  if (progressFilledLand) progressFilledLand.style.width = w;
+  // 宽度：仅数值变化时更新，减少无谓 style 写入
+  const p = Math.round(pct * 10) / 10; // 0.1% 精度足够
+  if (p !== _lastProgressPct) {
+    _lastProgressPct = p;
+    const w = p + '%';
+    progressFilled.style.width = w;
+    if (progressFilledLand) progressFilledLand.style.width = w;
+  }
   const c = fmt(cur);
   const d = fmt(dur);
-  currentTimeEl.textContent = c;
-  durationEl.textContent = d;
-  if (currentTimeLand) currentTimeLand.textContent = c;
-  if (durationLand) durationLand.textContent = d;
+  if (c !== _lastProgressCur) {
+    _lastProgressCur = c;
+    currentTimeEl.textContent = c;
+    if (currentTimeLand) currentTimeLand.textContent = c;
+  }
+  if (d !== _lastProgressDur) {
+    _lastProgressDur = d;
+    durationEl.textContent = d;
+    if (durationLand) durationLand.textContent = d;
+  }
 };
 
 /** 标题栏右侧：当前序号 / 总数（仅本地模式） */

@@ -2,6 +2,11 @@
  * main.js —— 启动：缓存秒开 → 后台 HEAD 探测远程视频 → 合并列表 → 恢复进度
  * 策略：只增不减；探测失败不删已有；慢网下先显示缓存再增量更新
  * 刷新/增量合并时尽量不打断正在播放的视频
+ *
+ * 效率：
+ * - 启动时对 knownVideos 做轻量抽检 + 只探测未知名，全量留给手动刷新
+ * - showList 用 DocumentFragment；列表未变且 keepFile 时只同步高亮不重绘
+ * - createCard 纯同步建 DOM，缩略图走 refreshAllThumbs
  */
 const videoUrl = name => BASE_URL + name;
 const allVideoNames = () => Array.from({ length: MAX }, (_, i) => i + 1 + '.mp4');
@@ -43,23 +48,80 @@ const exists = async name => {
 /** 是否正在扫描（供 events.js 判断，防止重复点击刷新） */
 let scanning = false;
 
-/** 并发探测 1.mp4 ~ MAX.mp4，返回本轮探测到存在的文件名数组 */
-const probeAll = async () => {
-  const allNames = allVideoNames();
-  const CONCURRENCY = 6;
+/**
+ * 并发探测指定文件名列表。
+ * names 缺省时探测 1.mp4 ~ MAX.mp4（全量，用于手动刷新）。
+ */
+const probeNames = async names => {
+  const list = names || allVideoNames();
+  // 弱网略降并发，避免打爆
+  let CONCURRENCY = 6;
+  try {
+    const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (c && (c.saveData || /2g|slow-2g|3g/i.test(c.effectiveType || ''))) {
+      CONCURRENCY = 3;
+    }
+  } catch {}
+
   const scanned = [];
   let cursor = 0;
 
   const worker = async () => {
-    while (cursor < allNames.length) {
+    while (cursor < list.length) {
       const i = cursor++;
-      const name = allNames[i];
+      const name = list[i];
       if (await exists(name)) scanned.push(name);
     }
   };
 
-  await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, list.length || 1) }, () => worker()));
   return scanned;
+};
+
+/** 全量探测（手动刷新 / 无缓存首次） */
+const probeAll = () => probeNames(null);
+
+/**
+ * 启动轻量探测：
+ * - 对已缓存 known 抽检最多 4 个（头、尾、中间），确认仍可用则整表保留
+ * - 只探测「不在 known 里」的候选名，找新增
+ * - 抽检若大量失败，则回退全量探测（防缓存过期）
+ */
+const probeIncremental = async known => {
+  const allNames = allVideoNames();
+  const knownSet = new Set(known);
+  const knownList = known.filter(n => allNames.includes(n));
+
+  // 抽检：最多 4 个
+  const sample = [];
+  if (knownList.length) {
+    sample.push(knownList[0]);
+    if (knownList.length > 1) sample.push(knownList[knownList.length - 1]);
+    if (knownList.length > 3) {
+      sample.push(knownList[Math.floor(knownList.length / 3)]);
+      sample.push(knownList[Math.floor((knownList.length * 2) / 3)]);
+    } else if (knownList.length > 2) {
+      sample.push(knownList[Math.floor(knownList.length / 2)]);
+    }
+  }
+  const uniqueSample = [...new Set(sample)];
+  let stillOk = 0;
+  if (uniqueSample.length) {
+    const okList = await probeNames(uniqueSample);
+    stillOk = okList.length;
+  }
+
+  // 抽检失败过半 → 缓存可能过期，全量扫
+  if (uniqueSample.length && stillOk < Math.ceil(uniqueSample.length / 2)) {
+    return probeAll();
+  }
+
+  // 只探未知名
+  const unknown = allNames.filter(n => !knownSet.has(n));
+  const foundNew = unknown.length ? await probeNames(unknown) : [];
+
+  // 已知仍保留 + 新增
+  return Array.from(new Set([...knownList, ...foundNew]));
 };
 
 /** 当前 <video> 是否正在播指定文件名 */
@@ -95,12 +157,18 @@ const scanVideos = async ({ restoreOnFirst = false } = {}) => {
   scanning = true;
   scanBar?.classList.add('active');
   try {
-    const before = videoList;
+    const before = videoList.slice();
     // 合并前记下正在播的文件，避免 videoList 替换后 index 对不上
     const playingFile =
       mode === 'local' && currentIndex >= 0 ? before[currentIndex] : null;
 
-    const scanned = await probeAll();
+    // 启动且已有缓存 → 轻量增量；否则（手动刷新 / 无缓存）全量
+    let scanned;
+    if (restoreOnFirst && before.length) {
+      scanned = await probeIncremental(before);
+    } else {
+      scanned = await probeAll();
+    }
 
     const merged = Array.from(new Set([...before, ...scanned])).sort(
       (a, b) => parseInt(a, 10) - parseInt(b, 10)
@@ -137,6 +205,7 @@ const scanVideos = async ({ restoreOnFirst = false } = {}) => {
  * 渲染卡片列表。
  * - restore: 启动时从 IDB 恢复上次播放
  * - keepFile: 刷新/增量时尽量保持该文件继续播，不跳回第一集
+ * 若 DOM 已有且与 videoList 一一对应，只同步 active / 序号，避免整表重绘
  */
 const showList = async ({ restore = false, keepFile = null } = {}) => {
   if (!videoList.length) {
@@ -146,10 +215,22 @@ const showList = async ({ restore = false, keepFile = null } = {}) => {
     return;
   }
   status.textContent = '共 ' + videoList.length + ' 个视频';
-  grid.innerHTML = '';
-  const cards = await Promise.all(videoList.map(createCard));
-  cards.forEach(c => grid.appendChild(c));
-  await refreshAllThumbs();
+
+  // DOM 已与 videoList 对齐时跳过整表重建（增量扫描无新增、或 keepFile 同列表）
+  const existing = grid ? Array.from(grid.querySelectorAll('.card')) : [];
+  const domMatches =
+    existing.length === videoList.length &&
+    existing.every((c, i) => c.dataset.file === videoList[i]);
+
+  if (!domMatches) {
+    const frag = document.createDocumentFragment();
+    for (const name of videoList) {
+      frag.appendChild(createCard(name));
+    }
+    grid.innerHTML = '';
+    grid.appendChild(frag);
+    await refreshAllThumbs();
+  }
 
   // 1) 启动恢复
   if (restore) {

@@ -3,8 +3,10 @@
  * - 复用 canvas，避免每次 createElement
  * - toBlob 直接存 Blob，去掉 dataURL → fetch → blob 双工
  * - 内存缓存 + 截图中互斥，避免重复 IDB / 重复截帧
- * - refreshAllThumbs 一次 cursor 批量读，再按需刷 DOM
+ * - Blob URL 复用：同一 Blob 只 createObjectURL 一次
+ * - refreshAllThumbs 一次 cursor 批量读，再按需刷 DOM；已有稳定 src 的卡片跳过
  * - 卡片图 loading=lazy
+ * - 自动截图仅在页面可见时进行
  */
 const safeFileSel = name => {
   try {
@@ -16,6 +18,7 @@ const safeFileSel = name => {
 };
 
 const thumbMem = new Map(); // name -> IDB 记录（Blob | string）
+const thumbUrlCache = new Map(); // name -> { src, blobUrl } 稳定 objectURL，避免重复 create/revoke
 let thumbCanvas = null;
 let thumbCtx = null;
 let captureInFlight = null; // Promise | null，同一时刻只截一张
@@ -42,25 +45,43 @@ async function getThumbRecord(name) {
   }
 }
 
-function recordToSrc(rec) {
+/**
+ * 将 IDB 记录转为可赋给 img.src 的信息。
+ * Blob / ArrayBuffer：同一 name 复用已创建的 objectURL，不反复 create/revoke。
+ */
+function recordToSrc(name, rec) {
   if (!rec) return null;
   try {
     if (typeof rec === 'string') return { src: rec, blobUrl: null };
+
+    // 已有缓存且仍指向同一条记录 → 直接复用
+    const cached = thumbUrlCache.get(name);
+    if (cached && thumbMem.get(name) === rec) return cached;
+
+    let blob = null;
     if (rec instanceof Blob) {
-      const u = URL.createObjectURL(rec);
-      return { src: u, blobUrl: u };
+      blob = rec;
+    } else if (rec instanceof ArrayBuffer || ArrayBuffer.isView(rec)) {
+      blob = new Blob([rec], { type: 'image/jpeg' });
     }
-    if (rec instanceof ArrayBuffer || ArrayBuffer.isView(rec)) {
-      const blob = new Blob([rec], { type: 'image/jpeg' });
-      const u = URL.createObjectURL(blob);
-      return { src: u, blobUrl: u };
+    if (!blob) return null;
+
+    // 旧 URL 可释放（同一 name 换了新 Blob 时）
+    if (cached?.blobUrl) {
+      try {
+        URL.revokeObjectURL(cached.blobUrl);
+      } catch {}
     }
+
+    const u = URL.createObjectURL(blob);
+    const info = { src: u, blobUrl: u };
+    thumbUrlCache.set(name, info);
+    return info;
   } catch (e) {
     console.warn('recordToSrc', e);
   }
   return null;
 }
-
 
 /** 直接存 Blob；若传入 dataURL 则降级转换 */
 async function saveThumb(name, data) {
@@ -74,6 +95,14 @@ async function saveThumb(name, data) {
     }
     if (blob) {
       await idbSet('thumbs', name, blob);
+      // 换新 Blob 时清掉旧 objectURL，下次 recordToSrc 会重建
+      const old = thumbUrlCache.get(name);
+      if (old?.blobUrl) {
+        try {
+          URL.revokeObjectURL(old.blobUrl);
+        } catch {}
+        thumbUrlCache.delete(name);
+      }
       thumbMem.set(name, blob);
       return;
     }
@@ -82,6 +111,7 @@ async function saveThumb(name, data) {
     if (typeof data === 'string') {
       await idbSet('thumbs', name, data);
       thumbMem.set(name, data);
+      thumbUrlCache.delete(name);
     }
   } catch (e2) {
     console.warn('saveThumb', e2);
@@ -112,7 +142,6 @@ const captureBlob = () =>
     }
   });
 
-
 const applyThumbToCard = (card, srcInfo) => {
   if (!card || !srcInfo?.src) return;
   const thumb = card.querySelector('.thumb');
@@ -129,26 +158,22 @@ const applyThumbToCard = (card, srcInfo) => {
     if (num) thumb.insertBefore(img, num);
     else thumb.appendChild(img);
   }
-  if (img.dataset.blobUrl) {
-    try {
-      URL.revokeObjectURL(img.dataset.blobUrl);
-    } catch {}
-    delete img.dataset.blobUrl;
-  }
+  // 同一 src 不重复赋值；objectURL 生命周期由 thumbUrlCache 统一管理，此处不 revoke
+  if (img.src === srcInfo.src) return;
   if (srcInfo.blobUrl) img.dataset.blobUrl = srcInfo.blobUrl;
-  // 同一 src 不重复赋值，减少解码
-  if (img.src !== srcInfo.src) img.src = srcInfo.src;
+  else delete img.dataset.blobUrl;
+  img.src = srcInfo.src;
 };
 
 const updateCardThumb = async (name, rec) => {
   const card = grid.querySelector(`[data-file="${safeFileSel(name)}"]`);
   if (!card) return;
   if (rec === undefined) rec = await getThumbRecord(name);
-  const srcInfo = recordToSrc(rec);
+  const srcInfo = recordToSrc(name, rec);
   if (srcInfo) applyThumbToCard(card, srcInfo);
 };
 
-/** 批量刷：一次 cursor 读完 thumbs，再只更新列表里存在的卡片 */
+/** 批量刷：一次 cursor 读完 thumbs，再只更新列表里存在的卡片；已有相同 src 的跳过 */
 const refreshAllThumbs = async () => {
   if (!videoList.length || !grid) return;
   let entries = [];
@@ -164,7 +189,7 @@ const refreshAllThumbs = async () => {
         captured.add(name);
         const card = grid.querySelector(`[data-file="${safeFileSel(name)}"]`);
         if (card) {
-          const srcInfo = recordToSrc(rec);
+          const srcInfo = recordToSrc(name, rec);
           if (srcInfo) applyThumbToCard(card, srcInfo);
         }
       })
@@ -173,7 +198,6 @@ const refreshAllThumbs = async () => {
   }
 
   const want = new Set(videoList);
-  // 分帧刷 DOM，避免一次改 50+ 张图卡主线程
   const pending = [];
   for (const [key, rec] of entries) {
     if (!want.has(key) || !rec) continue;
@@ -188,7 +212,7 @@ const refreshAllThumbs = async () => {
     for (const [name, rec] of slice) {
       const card = grid.querySelector(`[data-file="${safeFileSel(name)}"]`);
       if (!card) continue;
-      const srcInfo = recordToSrc(rec);
+      const srcInfo = recordToSrc(name, rec);
       if (srcInfo) applyThumbToCard(card, srcInfo);
     }
     if (i + CHUNK < pending.length) {
@@ -209,9 +233,10 @@ const setThumbFromCurrent = async () => {
   return true;
 };
 
-/** 自动截图：仅首次；互斥，避免 timeupdate 叠飞 */
+/** 自动截图：仅首次；互斥；页面不可见时跳过，省后台 CPU */
 const tryCapture = async () => {
   if (mode !== 'local' || currentIndex < 0) return;
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
   const name = videoList[currentIndex];
   if (captured.has(name) || player.currentTime < 0.8) return;
   if (captureInFlight) return;
