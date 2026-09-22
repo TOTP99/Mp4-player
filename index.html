@@ -50,11 +50,18 @@
 
       <div class="controls">
         <div class="controls-left btn-group">
-          <button id="prevBtn" title="上一个 (←)" disabled>⏮</button>
-          <button class="play" id="playBtn" title="播放/暂停 (空格)">▶</button>
-          <button id="nextBtn" title="下一个 (→)" disabled>⏭</button>
+          <button id="prevBtn" title="上一个 (←)" disabled><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+          <button class="play" id="playBtn" title="播放/暂停 (空格)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+          <button id="nextBtn" title="下一个 (→)" disabled><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
         </div>
-        <button id="loopBtn" class="mid-btn" title="连续循环播放（关）">🔢</button>
+        <button id="loopBtn" class="mid-btn" title="连续循环播放（关）">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="17 1 21 5 17 9"></polyline>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+            <polyline points="7 23 3 19 7 15"></polyline>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+          </svg>
+        </button>
         <div class="controls-center">
           <div class="progress-bar" id="progressBarLand">
             <div class="progress-filled" id="progressFilledLand"></div>
@@ -67,16 +74,35 @@
         </div>
         <div class="controls-right">
           <div class="btn-group">
-            <button id="fsBtn" class="fs-btn" title="全屏 (F)">⛶</button>
-            <button id="refreshBtn" title="刷新视频列表 (R)">🔄</button>
-            <button id="toggleListBtn" class="folder-btn" title="视频列表">📁</button>
+            <button id="fsBtn" class="fs-btn" title="全屏 (F)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+              </svg>
+            </button>
+            <button id="refreshBtn" title="刷新视频列表 (R)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+            </button>
+            <button id="toggleListBtn" class="folder-btn" title="视频列表">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
 
       <div class="url-row">
         <input type="url" id="urlInput" placeholder="粘贴 YouTube 链接" autocomplete="off" />
-        <button id="playUrlBtn" title="播放链接">▶</button>
+        <button id="playUrlBtn" title="播放链接"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
       </div>
     </div>
   </div>

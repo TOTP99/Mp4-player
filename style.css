@@ -452,6 +452,13 @@ body {
   flex-shrink: 0;
 }
 
+.controls button svg,
+.url-row button svg {
+  width: 1em;
+  height: 1em;
+  display: block;
+}
+
 .controls button {
   width: auto;
   height: auto;
@@ -485,6 +492,13 @@ body {
   color: var(--muted);
   background: transparent;
   border-color: transparent;
+}
+
+/* 视频列表按钮：展开时高亮，替代原来 📁/📂 图标切换 */
+.folder-btn.active {
+  color: var(--gold-bright);
+  background: rgba(232, 197, 106, 0.12);
+  border-color: rgba(232, 197, 106, 0.35);
 }
 
 .controls .play {

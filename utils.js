@@ -1,6 +1,11 @@
 /*
  * utils.js —— 时间格式化、YouTube 解析、全屏
  */
+
+// 播放/暂停按钮图标（SVG 替代原来的 ▶/⏸ emoji）
+const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+
 const fmt = sec => {
   if (!isFinite(sec) || sec < 0) return '0:00';
   const m = Math.floor(sec / 60);

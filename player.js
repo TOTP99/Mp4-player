@@ -121,7 +121,7 @@ const showYT = id => {
   currentIndex = -1;
   prevBtn.disabled = true;
   nextBtn.disabled = true;
-  playBtn.textContent = '▶';
+  playBtn.innerHTML = ICON_PLAY;
   nowPlaying.textContent = 'YouTube · ' + id;
   updatePosInfo();
   grid.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
@@ -198,7 +198,7 @@ const playNextSequential = () => {
   // 整圈都失败就停，避免 error → next → error 死循环
   if (sequentialSkipCount > videoList.length) {
     sequentialSkipCount = 0;
-    playBtn.textContent = '▶';
+    playBtn.innerHTML = ICON_PLAY;
     return;
   }
   saveState(true);

@@ -13,7 +13,7 @@ urlInput.addEventListener('keydown', e => {
 
 toggleListBtn.addEventListener('click', async () => {
   const open = listPanel.classList.toggle('open');
-  toggleListBtn.textContent = open ? '📂' : '📁';
+  toggleListBtn.classList.toggle('active', open);
   toggleListBtn.title = open ? '收起列表' : '视频列表';
   await saveUI({ listOpen: open });
   if (open) refreshAllThumbs();
@@ -61,16 +61,16 @@ document.addEventListener('webkitfullscreenchange', syncFsBtn);
 
 // ---- <video> 事件 ----
 player.addEventListener('play', () => {
-  playBtn.textContent = '⏸';
+  playBtn.innerHTML = ICON_PAUSE;
   sequentialSkipCount = 0; // 成功开始播放，清零失败跳过计数
 });
 player.addEventListener('pause', () => {
-  playBtn.textContent = '▶';
+  playBtn.innerHTML = ICON_PLAY;
   saveState(true);
   tryCapture();
 });
 player.addEventListener('ended', () => {
-  playBtn.textContent = '▶';
+  playBtn.innerHTML = ICON_PLAY;
   // 播完：进度记为 0，下次该片从头播
   saveState(true);
   tryCapture();

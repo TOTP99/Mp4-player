@@ -291,7 +291,7 @@ const showList = async ({ restore = false, keepFile = null } = {}) => {
     const ui = await loadUI();
     if (ui.listOpen) {
       listPanel.classList.add('open');
-      toggleListBtn.textContent = '📂';
+      toggleListBtn.classList.add('active');
       toggleListBtn.title = '收起列表';
     }
     if (ui.sequentialPlay) {
