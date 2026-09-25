@@ -1,6 +1,24 @@
 /*
  * events.js —— 按钮、播放器、进度条拖拽、键盘快捷键、左右滑动换片
  */
+
+/** 在 YouTube 输入框短暂显示操作提示（不覆盖已输入内容） */
+let _tipTimer = null;
+const DEFAULT_URL_PLACEHOLDER = '粘贴 YouTube 链接';
+function flashTip(msg, ms = 1600) {
+  if (!urlInput) return;
+  if (_tipTimer) clearTimeout(_tipTimer);
+  const hadFocus = document.activeElement === urlInput;
+  const prevPh = urlInput.placeholder || DEFAULT_URL_PLACEHOLDER;
+  urlInput.placeholder = msg;
+  // 若用户已输入内容，不改 value，仅换 placeholder 也能看到提示
+  _tipTimer = setTimeout(() => {
+    urlInput.placeholder = prevPh === msg ? DEFAULT_URL_PLACEHOLDER : prevPh;
+    _tipTimer = null;
+    if (hadFocus) urlInput.focus();
+  }, ms);
+}
+
 playUrlBtn.addEventListener('click', () => {
   const id = ytId(urlInput.value.trim());
   if (!id) return alert('无法识别 YouTube 链接');
@@ -16,6 +34,7 @@ toggleListBtn.addEventListener('click', async () => {
   toggleListBtn.classList.toggle('active', open);
   toggleListBtn.title = open ? '收起列表' : '视频列表';
   await saveUI({ listOpen: open });
+  flashTip(open ? '列表 · 开' : '列表 · 关');
   if (open) refreshAllThumbs();
 });
 
@@ -23,15 +42,18 @@ toggleListBtn.addEventListener('click', async () => {
 loopBtn?.addEventListener('click', async () => {
   setPlayMode('sequential');
   await saveUI({ sequentialPlay, randomPlay });
+  flashTip(sequentialPlay ? '顺序循环 · 开' : '顺序循环 · 关');
 });
 shuffleBtn?.addEventListener('click', async () => {
   setPlayMode('random');
   await saveUI({ sequentialPlay, randomPlay });
+  flashTip(randomPlay ? '随机播放 · 开' : '随机播放 · 关');
 });
 // 音质增强：仅 local
 audioEnhanceBtn?.addEventListener('click', async () => {
   setAudioEnhance(!audioEnhanceOn);
   await saveUI({ audioEnhance: audioEnhanceOn });
+  flashTip(audioEnhanceOn ? '降噪音质 · 开' : '降噪音质 · 关');
 });
 
 refreshBtn.addEventListener('click', async () => {
@@ -40,6 +62,7 @@ refreshBtn.addEventListener('click', async () => {
   refreshBtn.classList.add('spinning');
   const prevStatus = status.textContent;
   status.textContent = '正在刷新视频列表…';
+  flashTip('正在刷新列表…');
   try {
     const result = await scanVideos();
     if (result) {
@@ -48,8 +71,14 @@ refreshBtn.addEventListener('click', async () => {
         : '共 ' + videoList.length + ' 个视频（无新增）';
       // 列表变长时刷新标题栏序号/总数（当前片可能还在播）
       updatePosInfo();
+      flashTip(
+        result.changed
+          ? '刷新完成 · 新增 ' + result.addedCount + ' 个'
+          : '刷新完成 · 无新增'
+      );
     } else {
       status.textContent = prevStatus;
+      flashTip('刷新完成');
     }
   } finally {
     refreshBtn.disabled = false;
@@ -57,10 +86,28 @@ refreshBtn.addEventListener('click', async () => {
   }
 });
 
-playBtn.addEventListener('click', togglePlay);
-prevBtn.addEventListener('click', playPrev);
-nextBtn.addEventListener('click', playNext);
-fsBtn.addEventListener('click', toggleFullscreen);
+playBtn.addEventListener('click', () => {
+  if (mode !== 'local') return;
+  const wasPaused = player.paused;
+  togglePlay();
+  flashTip(wasPaused ? '播放中' : '已暂停');
+});
+prevBtn.addEventListener('click', () => {
+  playPrev();
+  if (mode === 'local' && currentIndex >= 0) flashTip('上一集');
+});
+nextBtn.addEventListener('click', () => {
+  playNext();
+  if (mode === 'local' && currentIndex >= 0) flashTip('下一集');
+});
+fsBtn.addEventListener('click', () => {
+  toggleFullscreen();
+  // 全屏切换有延迟，稍后再读状态
+  setTimeout(() => {
+    const nowOn = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    flashTip(nowOn ? '全屏 · 开' : '全屏 · 关');
+  }, 80);
+});
 document.addEventListener('fullscreenchange', syncFsBtn);
 document.addEventListener('webkitfullscreenchange', syncFsBtn);
 
