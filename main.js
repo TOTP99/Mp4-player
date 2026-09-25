@@ -302,6 +302,11 @@ const showList = async ({ restore = false, keepFile = null } = {}) => {
       randomPlay = false;
     }
     syncPlayModeUI();
+    if (typeof ui.audioEnhance === 'boolean') {
+      setAudioEnhance(ui.audioEnhance);
+    } else {
+      setAudioEnhance(true);
+    }
   } catch {}
 
   const allNames = allVideoNames();

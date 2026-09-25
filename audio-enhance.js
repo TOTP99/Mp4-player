@@ -1,10 +1,6 @@
 /**
- * audio-enhance.js —— 视频 / 影音音质与响度处理（独立模块）
- *
- * 针对 mp4 对白 + 音效：高通/低通降噪、压缩、AGC 响度平衡、软限幅。
- *   const enh = createAudioEnhancer(audioContext);
- *   enh.connectFrom(mediaElementSource, destination);
- *   enh.resetAgc() / setEnabled(false) / setWet(0)
+ * audio-enhance.js —— 视频音质 / 响度处理
+ * 高通+低通降噪、压缩、AGC 响度平衡、软限幅
  */
 (function (global) {
   "use strict";
@@ -109,14 +105,12 @@
       rafId = requestAnimationFrame(agcTick);
       if (!enabled || !connected) return;
       if (ctx.state !== "running") return;
-
       var rms = readRms();
       var desired;
       if (rms < cfg.silenceRms) {
         desired = 1;
       } else {
-        desired = cfg.targetRms / rms;
-        desired = clamp(desired, cfg.agcMin, cfg.agcMax);
+        desired = clamp(cfg.targetRms / rms, cfg.agcMin, cfg.agcMax);
       }
       desired = 1 + (desired - 1) * cfg.wet;
       smoothGain += (desired - smoothGain) * cfg.agcSmooth;
@@ -177,33 +171,11 @@
       } catch (e) {}
     }
 
-    function updateConfig(partial) {
-      if (!partial || typeof partial !== "object") return;
-      for (var key in partial) {
-        if (Object.prototype.hasOwnProperty.call(partial, key) && key in cfg) {
-          cfg[key] = partial[key];
-        }
-      }
-      try {
-        if ("highpassHz" in partial) highpass.frequency.value = cfg.highpassHz;
-        if ("lowpassHz" in partial) lowpass.frequency.value = cfg.lowpassHz;
-        if ("compThreshold" in partial) compressor.threshold.value = cfg.compThreshold;
-        if ("compKnee" in partial) compressor.knee.value = cfg.compKnee;
-        if ("compRatio" in partial) compressor.ratio.value = cfg.compRatio;
-        if ("compAttack" in partial) compressor.attack.value = cfg.compAttack;
-        if ("compRelease" in partial) compressor.release.value = cfg.compRelease;
-        if ("limiterThreshold" in partial) {
-          limiter.curve = makeLimiterCurve(cfg.limiterThreshold);
-        }
-      } catch (e) {}
-    }
-
     return {
       connectFrom: connectFrom,
       setEnabled: setEnabled,
       setWet: setWet,
       resetAgc: resetAgc,
-      updateConfig: updateConfig,
       stop: stopAgc,
       get config() { return cfg; },
       get gain() { return smoothGain; },

@@ -19,7 +19,7 @@ toggleListBtn.addEventListener('click', async () => {
   if (open) refreshAllThumbs();
 });
 
-// 顺序 / 随机：仅 click，无长按；二者互斥
+// 顺序 / 随机：仅 click；互斥
 loopBtn?.addEventListener('click', async () => {
   setPlayMode('sequential');
   await saveUI({ sequentialPlay, randomPlay });
@@ -27,6 +27,11 @@ loopBtn?.addEventListener('click', async () => {
 shuffleBtn?.addEventListener('click', async () => {
   setPlayMode('random');
   await saveUI({ sequentialPlay, randomPlay });
+});
+// 音质增强：仅 local
+audioEnhanceBtn?.addEventListener('click', async () => {
+  setAudioEnhance(!audioEnhanceOn);
+  await saveUI({ audioEnhance: audioEnhanceOn });
 });
 
 refreshBtn.addEventListener('click', async () => {

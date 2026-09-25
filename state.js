@@ -39,6 +39,7 @@ const progressFilledLand = $('progressFilledLand');
 const currentTimeLand = $('currentTimeLand');
 const durationLand = $('durationLand');
 const fsBtn = $('fsBtn');
+const audioEnhanceBtn = $('audioEnhanceBtn');
 const stage = $('stage');
 const screenWrap = document.querySelector('.screen-wrap');
 const clockEl = $('clock');
@@ -92,8 +93,15 @@ let currentIndex = -1;
 let mode = null; // 'local' | 'youtube' | null
 let sequentialPlay = false; // 顺序循环
 let randomPlay = false; // 随机（与顺序互斥）
+let audioEnhanceOn = true; // 音质增强（仅 local）
 const captured = new Set();
 let db = null;
+
+// ---- 音质增强（Web Audio，仅本地 mp4）----
+let audioCtx = null;
+let mediaSourceNode = null;
+let audioEnhancer = null;
+let audioEnhanceWired = false;
 
 // ---- 实时时钟（后台可停，见 events.js visibilitychange） ----
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
