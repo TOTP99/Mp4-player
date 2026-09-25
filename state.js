@@ -91,7 +91,7 @@ let videoList = [];
 let currentIndex = -1;
 let mode = null; // 'local' | 'youtube' | null
 let sequentialPlay = false; // 🔢 连续循环播放：播完/失败自动下一集，末尾回到第一集
-let audioEnhanceOn = true; // 音质增强：降噪 + 响度平衡（仅 local）
+let audioEnhanceOn = true; // 音质增强（仅 local）
 const captured = new Set();
 let db = null;
 

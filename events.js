@@ -29,7 +29,6 @@ loopBtn?.addEventListener('click', async () => {
   await saveUI({ sequentialPlay });
 });
 
-// 音质增强：降噪 + 响度平衡（仅 local mp4；YouTube iframe 无法处理）
 audioEnhanceBtn?.addEventListener('click', async () => {
   setAudioEnhance(!audioEnhanceOn);
   await saveUI({ audioEnhance: audioEnhanceOn });

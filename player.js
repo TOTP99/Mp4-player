@@ -15,11 +15,6 @@
 // play() 也会被多余地调用一次。
 let pendingMetaHandler = null;
 
-/**
- * 初始化 / 接入音质增强链（仅 local mp4）。
- * MediaElementSource 每个 <video> 只能创建一次，之后换 src 仍走同一条链。
- * 需用户手势后 AudioContext 才会 running。
- */
 function ensureAudioEnhance() {
   if (typeof createAudioEnhancer !== 'function') return;
   try {
@@ -45,22 +40,19 @@ function ensureAudioEnhance() {
     }
     if (audioEnhancer) {
       audioEnhancer.setEnabled(!!audioEnhanceOn);
-      if (audioEnhanceOn) audioEnhancer.setWet(1);
-      else audioEnhancer.setWet(0);
+      audioEnhancer.setWet(audioEnhanceOn ? 1 : 0);
     }
   } catch (e) {
     console.warn('ensureAudioEnhance', e);
   }
 }
 
-/** 换片时重置 AGC，避免沿用上一集增益 */
 function resetAudioEnhanceAgc() {
   try {
     if (audioEnhancer) audioEnhancer.resetAgc();
   } catch {}
 }
 
-/** 开关音质增强并同步按钮 */
 function setAudioEnhance(on) {
   audioEnhanceOn = !!on;
   if (audioEnhancer) {
@@ -161,7 +153,6 @@ const showLocal = () => {
   player.style.display = 'block';
   progressArea.classList.add('show');
   mode = 'local';
-  // 首次进入本地模式时接上音质增强链
   ensureAudioEnhance();
 };
 
@@ -199,7 +190,6 @@ const openLocal = (index, restoreTime) => {
   const file = videoList[index];
 
   showLocal();
-  // 换片：重置 AGC，避免沿用上一集增益
   resetAudioEnhanceAgc();
   // 远程地址；crossOrigin 已在 state.js 设置
   player.src = BASE_URL + file;
@@ -216,7 +206,6 @@ const openLocal = (index, restoreTime) => {
     player.removeEventListener('loadedmetadata', onMeta);
     pendingMetaHandler = null;
 
-    // 用户手势后 resume AudioContext
     ensureAudioEnhance();
 
     let t = restoreTime;
