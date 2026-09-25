@@ -286,7 +286,7 @@ const showList = async ({ restore = false, keepFile = null } = {}) => {
     console.warn('IndexedDB', e);
   }
 
-  // 恢复 UI 偏好（列表展开状态、连续循环播放开关）
+  // 恢复 UI 偏好（列表展开、连续循环、音质增强）
   try {
     const ui = await loadUI();
     if (ui.listOpen) {
@@ -298,6 +298,12 @@ const showList = async ({ restore = false, keepFile = null } = {}) => {
       sequentialPlay = true;
       loopBtn?.classList.add('active');
       if (loopBtn) loopBtn.title = '连续循环播放（开）';
+    }
+    // 音质增强：默认开；若用户曾关掉则恢复关
+    if (typeof ui.audioEnhance === 'boolean') {
+      setAudioEnhance(ui.audioEnhance);
+    } else {
+      setAudioEnhance(true);
     }
   } catch {}
 

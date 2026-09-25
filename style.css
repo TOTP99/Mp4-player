@@ -501,6 +501,13 @@ body {
   border-color: rgba(232, 197, 106, 0.35);
 }
 
+/* 音质增强：开启后金色高亮 */
+.enhance-btn.active {
+  color: var(--gold-bright);
+  background: rgba(232, 197, 106, 0.12);
+  border-color: rgba(232, 197, 106, 0.35);
+}
+
 .controls .play {
   color: #0a0e14;
   font-size: 1.5rem;

@@ -15,6 +15,66 @@
 // play() 也会被多余地调用一次。
 let pendingMetaHandler = null;
 
+/**
+ * 初始化 / 接入音质增强链（仅 local mp4）。
+ * MediaElementSource 每个 <video> 只能创建一次，之后换 src 仍走同一条链。
+ * 需用户手势后 AudioContext 才会 running。
+ */
+function ensureAudioEnhance() {
+  if (typeof createAudioEnhancer !== 'function') return;
+  try {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+    if (!mediaSourceNode) {
+      mediaSourceNode = audioCtx.createMediaElementSource(player);
+    }
+    if (!audioEnhancer) {
+      audioEnhancer = createAudioEnhancer(audioCtx);
+    }
+    if (!audioEnhanceWired && audioEnhancer) {
+      audioEnhanceWired = audioEnhancer.connectFrom(
+        mediaSourceNode,
+        audioCtx.destination
+      );
+    }
+    if (audioEnhancer) {
+      audioEnhancer.setEnabled(!!audioEnhanceOn);
+      if (audioEnhanceOn) audioEnhancer.setWet(1);
+      else audioEnhancer.setWet(0);
+    }
+  } catch (e) {
+    console.warn('ensureAudioEnhance', e);
+  }
+}
+
+/** 换片时重置 AGC，避免沿用上一集增益 */
+function resetAudioEnhanceAgc() {
+  try {
+    if (audioEnhancer) audioEnhancer.resetAgc();
+  } catch {}
+}
+
+/** 开关音质增强并同步按钮 */
+function setAudioEnhance(on) {
+  audioEnhanceOn = !!on;
+  if (audioEnhancer) {
+    audioEnhancer.setEnabled(audioEnhanceOn);
+    audioEnhancer.setWet(audioEnhanceOn ? 1 : 0);
+  }
+  if (audioEnhanceBtn) {
+    audioEnhanceBtn.classList.toggle('active', audioEnhanceOn);
+    audioEnhanceBtn.title = audioEnhanceOn
+      ? '音质增强（开）：降噪 + 响度平衡'
+      : '音质增强（关）';
+  }
+}
+
 /** 读取完整 playback 对象（兼容旧数据：只有 file/time） */
 async function loadState() {
   try {
@@ -101,6 +161,8 @@ const showLocal = () => {
   player.style.display = 'block';
   progressArea.classList.add('show');
   mode = 'local';
+  // 首次进入本地模式时接上音质增强链
+  ensureAudioEnhance();
 };
 
 const showYT = id => {
@@ -137,6 +199,8 @@ const openLocal = (index, restoreTime) => {
   const file = videoList[index];
 
   showLocal();
+  // 换片：重置 AGC，避免沿用上一集增益
+  resetAudioEnhanceAgc();
   // 远程地址；crossOrigin 已在 state.js 设置
   player.src = BASE_URL + file;
   nowPlaying.textContent = file;
@@ -151,6 +215,9 @@ const openLocal = (index, restoreTime) => {
   const onMeta = async () => {
     player.removeEventListener('loadedmetadata', onMeta);
     pendingMetaHandler = null;
+
+    // 用户手势后 resume AudioContext
+    ensureAudioEnhance();
 
     let t = restoreTime;
     if (typeof t !== 'number') {
@@ -171,7 +238,12 @@ const openLocal = (index, restoreTime) => {
 
 const togglePlay = () => {
   if (mode !== 'local') return;
-  player.paused ? player.play().catch(() => {}) : player.pause();
+  if (player.paused) {
+    ensureAudioEnhance();
+    player.play().catch(() => {});
+  } else {
+    player.pause();
+  }
 };
 
 const playPrev = () => {
