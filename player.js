@@ -15,58 +15,6 @@
 // play() 也会被多余地调用一次。
 let pendingMetaHandler = null;
 
-function ensureAudioEnhance() {
-  if (typeof createAudioEnhancer !== 'function') return;
-  try {
-    if (!audioCtx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      audioCtx = new AC();
-    }
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume().catch(() => {});
-    }
-    if (!mediaSourceNode) {
-      mediaSourceNode = audioCtx.createMediaElementSource(player);
-    }
-    if (!audioEnhancer) {
-      audioEnhancer = createAudioEnhancer(audioCtx);
-    }
-    if (!audioEnhanceWired && audioEnhancer) {
-      audioEnhanceWired = audioEnhancer.connectFrom(
-        mediaSourceNode,
-        audioCtx.destination
-      );
-    }
-    if (audioEnhancer) {
-      audioEnhancer.setEnabled(!!audioEnhanceOn);
-      audioEnhancer.setWet(audioEnhanceOn ? 1 : 0);
-    }
-  } catch (e) {
-    console.warn('ensureAudioEnhance', e);
-  }
-}
-
-function resetAudioEnhanceAgc() {
-  try {
-    if (audioEnhancer) audioEnhancer.resetAgc();
-  } catch {}
-}
-
-function setAudioEnhance(on) {
-  audioEnhanceOn = !!on;
-  if (audioEnhancer) {
-    audioEnhancer.setEnabled(audioEnhanceOn);
-    audioEnhancer.setWet(audioEnhanceOn ? 1 : 0);
-  }
-  if (audioEnhanceBtn) {
-    audioEnhanceBtn.classList.toggle('active', audioEnhanceOn);
-    audioEnhanceBtn.title = audioEnhanceOn
-      ? '音质增强（开）：降噪 + 响度平衡'
-      : '音质增强（关）';
-  }
-}
-
 /** 读取完整 playback 对象（兼容旧数据：只有 file/time） */
 async function loadState() {
   try {
@@ -153,7 +101,6 @@ const showLocal = () => {
   player.style.display = 'block';
   progressArea.classList.add('show');
   mode = 'local';
-  ensureAudioEnhance();
 };
 
 const showYT = id => {
@@ -190,7 +137,6 @@ const openLocal = (index, restoreTime) => {
   const file = videoList[index];
 
   showLocal();
-  resetAudioEnhanceAgc();
   // 远程地址；crossOrigin 已在 state.js 设置
   player.src = BASE_URL + file;
   nowPlaying.textContent = file;
@@ -205,8 +151,6 @@ const openLocal = (index, restoreTime) => {
   const onMeta = async () => {
     player.removeEventListener('loadedmetadata', onMeta);
     pendingMetaHandler = null;
-
-    ensureAudioEnhance();
 
     let t = restoreTime;
     if (typeof t !== 'number') {
@@ -227,12 +171,7 @@ const openLocal = (index, restoreTime) => {
 
 const togglePlay = () => {
   if (mode !== 'local') return;
-  if (player.paused) {
-    ensureAudioEnhance();
-    player.play().catch(() => {});
-  } else {
-    player.pause();
-  }
+  player.paused ? player.play().catch(() => {}) : player.pause();
 };
 
 const playPrev = () => {
@@ -252,11 +191,35 @@ const playNext = () => {
 /** 连续跳过失败次数；成功播出（play 事件）时清零，防止全列表挂掉时死循环 */
 let sequentialSkipCount = 0;
 
-/** 🔢 连续循环：一集播完（或加载失败）后自动下一集；末尾回到第一集 */
+function syncPlayModeUI() {
+  if (loopBtn) {
+    loopBtn.classList.toggle('active', sequentialPlay);
+    loopBtn.title = sequentialPlay ? '顺序循环（开）' : '顺序循环（关）';
+  }
+  if (shuffleBtn) {
+    shuffleBtn.classList.toggle('active', randomPlay);
+    shuffleBtn.title = randomPlay ? '随机播放（开）' : '随机播放（关）';
+  }
+}
+
+/** 'sequential' | 'random' — 互斥，再点已开的=关 */
+function setPlayMode(modeName) {
+  if (modeName === 'sequential') {
+    sequentialPlay = !sequentialPlay;
+    if (sequentialPlay) randomPlay = false;
+  } else if (modeName === 'random') {
+    randomPlay = !randomPlay;
+    if (randomPlay) sequentialPlay = false;
+  } else {
+    sequentialPlay = false;
+    randomPlay = false;
+  }
+  syncPlayModeUI();
+}
+
 const playNextSequential = () => {
   if (mode !== 'local' || !videoList.length) return;
   sequentialSkipCount += 1;
-  // 整圈都失败就停，避免 error → next → error 死循环
   if (sequentialSkipCount > videoList.length) {
     sequentialSkipCount = 0;
     playBtn.innerHTML = ICON_PLAY;
@@ -265,4 +228,31 @@ const playNextSequential = () => {
   saveState(true);
   const next = currentIndex + 1 < videoList.length ? currentIndex + 1 : 0;
   openLocal(next);
+};
+
+const playNextRandom = () => {
+  if (mode !== 'local' || !videoList.length) return;
+  sequentialSkipCount += 1;
+  if (sequentialSkipCount > videoList.length) {
+    sequentialSkipCount = 0;
+    playBtn.innerHTML = ICON_PLAY;
+    return;
+  }
+  saveState(true);
+  if (videoList.length === 1) {
+    openLocal(0);
+    return;
+  }
+  let next = currentIndex;
+  for (let i = 0; i < 12; i++) {
+    next = Math.floor(Math.random() * videoList.length);
+    if (next !== currentIndex) break;
+  }
+  if (next === currentIndex) next = (currentIndex + 1) % videoList.length;
+  openLocal(next);
+};
+
+const autoAdvance = () => {
+  if (randomPlay) playNextRandom();
+  else if (sequentialPlay) playNextSequential();
 };

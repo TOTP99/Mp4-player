@@ -19,19 +19,14 @@ toggleListBtn.addEventListener('click', async () => {
   if (open) refreshAllThumbs();
 });
 
-// 🔢 连续循环播放开关：开启后播完自动下一集并循环；加载失败也跳过下一集
+// 顺序 / 随机：仅 click，无长按；二者互斥
 loopBtn?.addEventListener('click', async () => {
-  sequentialPlay = !sequentialPlay;
-  loopBtn.classList.toggle('active', sequentialPlay);
-  loopBtn.title = sequentialPlay
-    ? '连续循环播放（开）'
-    : '连续循环播放（关）';
-  await saveUI({ sequentialPlay });
+  setPlayMode('sequential');
+  await saveUI({ sequentialPlay, randomPlay });
 });
-
-audioEnhanceBtn?.addEventListener('click', async () => {
-  setAudioEnhance(!audioEnhanceOn);
-  await saveUI({ audioEnhance: audioEnhanceOn });
+shuffleBtn?.addEventListener('click', async () => {
+  setPlayMode('random');
+  await saveUI({ sequentialPlay, randomPlay });
 });
 
 refreshBtn.addEventListener('click', async () => {
@@ -79,13 +74,12 @@ player.addEventListener('ended', () => {
   // 播完：进度记为 0，下次该片从头播
   saveState(true);
   tryCapture();
-  // 🔢 连续循环开启时，自动接下一集（末尾回到第一集）
-  if (sequentialPlay) playNextSequential();
+  autoAdvance();
 });
-// 加载失败（网速/404 等）：连续循环开启时跳过，播下一集
 player.addEventListener('error', () => {
-  if (mode !== 'local' || !sequentialPlay || !videoList.length) return;
-  playNextSequential();
+  if (mode !== 'local' || !videoList.length) return;
+  if (!sequentialPlay && !randomPlay) return;
+  autoAdvance();
 });
 // timeupdate 高频：仅更新进度条，节流 ~5 次/秒；截图与 timeupdate 解耦
 let lastProgressUI = 0;

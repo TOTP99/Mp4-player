@@ -294,16 +294,14 @@ const showList = async ({ restore = false, keepFile = null } = {}) => {
       toggleListBtn.classList.add('active');
       toggleListBtn.title = '收起列表';
     }
-    if (ui.sequentialPlay) {
+    if (ui.randomPlay) {
+      sequentialPlay = false;
+      randomPlay = true;
+    } else if (ui.sequentialPlay) {
       sequentialPlay = true;
-      loopBtn?.classList.add('active');
-      if (loopBtn) loopBtn.title = '连续循环播放（开）';
+      randomPlay = false;
     }
-    if (typeof ui.audioEnhance === 'boolean') {
-      setAudioEnhance(ui.audioEnhance);
-    } else {
-      setAudioEnhance(true);
-    }
+    syncPlayModeUI();
   } catch {}
 
   const allNames = allVideoNames();
