@@ -363,13 +363,7 @@ body {
   justify-content: flex-end;
 }
 
-/* 顺序/随机 模式按钮组 */
-.mode-btns {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  flex-shrink: 0;
-}
+/* 播放 + 顺序/随机 已并入左侧胶囊组 */
 
 /* 🔢 连续循环播放开关：默认细金圈；开启后细红圈（无发光） */
 .mid-btn {
@@ -764,11 +758,8 @@ body {
     min-width: 28px;
     min-height: 28px;
   }
-  .mode-btns {
-    gap: 3px;
-  }
   .controls .play {
-    /* 宽度预算(iPhone14竖屏390): 内宽342 = 左组106 + 模式59 + 右组162 + 组隙6 = 333, 余9px; 播放键勿超32px */
+    /* 宽度预算(iPhone14竖屏390): 内宽342 = 左组106 + 右组162 + 组隙2 = 270, 余72px 可加新按钮; 播放键勿超32px */
     font-size: 1.12rem;
     min-width: 32px;
     padding: 2px 5px;
@@ -843,9 +834,6 @@ body {
     height: 28px;
     min-width: 28px;
     min-height: 28px;
-  }
-  .mode-btns {
-    gap: 3px;
   }
   .controls .play {
     font-size: 1.12rem;

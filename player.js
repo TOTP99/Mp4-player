@@ -187,8 +187,6 @@ const showYT = id => {
   ytFrame.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
   mode = 'youtube';
   currentIndex = -1;
-  prevBtn.disabled = true;
-  nextBtn.disabled = true;
   playBtn.innerHTML = ICON_PLAY;
   nowPlaying.textContent = 'YouTube · ' + id;
   updatePosInfo();
@@ -211,8 +209,6 @@ const openLocal = (index, restoreTime) => {
   player.src = BASE_URL + file;
   nowPlaying.textContent = file;
   updatePosInfo();
-  prevBtn.disabled = index <= 0;
-  nextBtn.disabled = index >= videoList.length - 1;
 
   grid.querySelectorAll('.card').forEach(c => {
     c.classList.toggle('active', c.dataset.file === file);

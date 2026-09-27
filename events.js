@@ -95,14 +95,6 @@ playBtn.addEventListener('click', () => {
   togglePlay();
   flashTip(wasPaused ? '播放中' : '已暂停');
 });
-prevBtn.addEventListener('click', () => {
-  playPrev();
-  if (mode === 'local' && currentIndex >= 0) flashTip('上一集');
-});
-nextBtn.addEventListener('click', () => {
-  playNext();
-  if (mode === 'local' && currentIndex >= 0) flashTip('下一集');
-});
 fsBtn.addEventListener('click', () => {
   toggleFullscreen();
   // 全屏切换有延迟，稍后再读状态

@@ -138,8 +138,6 @@ const syncPlayingUI = file => {
   const idx = videoList.indexOf(file);
   if (idx < 0) return;
   currentIndex = idx;
-  prevBtn.disabled = idx <= 0;
-  nextBtn.disabled = idx >= videoList.length - 1;
   nowPlaying.textContent = file;
   updatePosInfo();
   grid.querySelectorAll('.card').forEach(c => {
