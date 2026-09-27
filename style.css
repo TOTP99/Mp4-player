@@ -63,6 +63,18 @@ body {
   opacity: 0.95;
 }
 
+/* 品牌标识：SVG 放映机 + 文字，去 emoji */
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.brand-mark svg {
+  width: 1.25em;
+  height: 1.25em;
+  display: block;
+}
+
 /* 主屏幕外框：双线描边 + 四角金标 */
 .screen-wrap {
   position: relative;
@@ -178,6 +190,8 @@ body {
   width: 100%;
   aspect-ratio: 16 / 9;
   background: #000;
+  /* 横滑换片走 JS，竖滑留给页面：避免手势冲突 */
+  touch-action: pan-y;
 }
 
 .stage video,
@@ -208,6 +222,49 @@ body {
   height: 44px;
   opacity: 0.5;
   stroke: var(--gold-dim);
+}
+
+/* 视频加载失败遮罩：错误图标 + 文案 + 重试 */
+.video-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(5, 7, 11, 0.92);
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  z-index: 3;
+}
+.video-error[hidden] {
+  display: none;
+}
+.video-error svg {
+  width: 40px;
+  height: 40px;
+  stroke: var(--gold-dim);
+  opacity: 0.8;
+}
+.video-error button {
+  margin-top: 2px;
+  padding: 7px 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 197, 106, 0.4);
+  background: rgba(232, 197, 106, 0.1);
+  color: var(--gold-bright);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.video-error button:hover {
+  background: rgba(232, 197, 106, 0.2);
+}
+.video-error button:active {
+  transform: scale(0.95);
 }
 
 /* 进度区 */
