@@ -404,15 +404,15 @@ body {
   box-shadow: none;
 }
 
-/* 同类按键收紧成一个胶囊组；不同组之间靠 gap/margin 拉开距离 */
+/* 同类按键收紧成一个胶囊组；钮与胶囊左右边框留呼吸 */
 .btn-group {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 2px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 2px;
+  padding: 3px 8px;
 }
 
 #refreshBtn.spinning {
@@ -431,7 +431,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 10px 10px;
+  padding: 0 14px 10px;
   background: linear-gradient(0deg, var(--surface) 0%, #0a0e14 100%);
   border-top: 1px solid rgba(42, 53, 69, 0.55);
 }
@@ -739,10 +739,10 @@ body {
   }
 }
 
-/* 竖屏紧凑 */
+/* 竖屏紧凑：iPhone 14 竖屏 390×844，四边留呼吸 */
 @media (max-width: 600px) {
   body {
-    padding: 8px 6px 22px;
+    padding: 12px 16px 24px;
   }
   .brand {
     font-size: 0.7rem;
@@ -781,7 +781,7 @@ body {
     padding: 2px 7px;
   }
   .url-row {
-    padding: 0 6px 8px;
+    padding: 0 10px 8px;
     gap: 6px;
   }
   .url-row input {
@@ -799,10 +799,10 @@ body {
   }
 }
 
-/* 横屏：进度并入控制条中间 */
+/* 横屏：iPhone 14 横屏 844×390，左右上下都留呼吸；进度并入控制条中间 */
 @media (orientation: landscape) {
   body {
-    padding: 6px 10px 8px;
+    padding: 8px 18px 10px;
     justify-content: flex-start;
   }
   .brand {
@@ -850,7 +850,7 @@ body {
     padding: 2px 7px;
   }
   .url-row {
-    padding: 0 8px 6px;
+    padding: 0 12px 6px;
     gap: 6px;
   }
   .url-row input {
@@ -899,7 +899,7 @@ body {
     padding: 1px 6px;
   }
   .url-row {
-    padding: 0 6px 4px;
+    padding: 0 10px 4px;
   }
   .url-row input {
     padding: 4px 7px;
