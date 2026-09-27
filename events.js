@@ -161,7 +161,7 @@ player.addEventListener('loadedmetadata', () => {
   );
 });
 
-// 设为代表图：双击画面 或 点相机按钮（iOS 上双击手势不可靠，故加显式按钮）
+// 设为代表图：点控制条相机按钮
 const captureAsThumb = async () => {
   const ok = await setThumbFromCurrent();
   if (ok) {
@@ -174,11 +174,6 @@ const captureAsThumb = async () => {
     flashTip('截图失败，稍后再试');
   }
 };
-
-player.addEventListener('dblclick', e => {
-  e.preventDefault();
-  captureAsThumb();
-});
 
 thumbBtn?.addEventListener('click', () => {
   captureAsThumb();
