@@ -146,14 +146,27 @@ const hideAll = () => {
   player.style.display = 'none';
   ytFrame.style.display = 'none';
   placeholder.style.display = 'none';
+  if (videoError) videoError.hidden = true;
 };
 
 const showLocal = () => {
   hideAll();
+  // 切回本地前先断掉 YouTube，否则 iframe 在后台继续播声音
+  ytFrame.removeAttribute('src');
   player.style.display = 'block';
   progressArea.classList.add('show');
   mode = 'local';
   ensureAudioEnhance();
+};
+
+/** 视频加载失败遮罩：普通模式给用户看错误+重试；循环模式由自动跳集接管 */
+const showVideoError = (msg) => {
+  if (!videoError) return;
+  if (videoErrorText && msg) videoErrorText.textContent = msg;
+  videoError.hidden = false;
+};
+const hideVideoError = () => {
+  if (videoError) videoError.hidden = true;
 };
 
 const showYT = id => {
@@ -168,6 +181,8 @@ const showYT = id => {
   player.load();
   hideAll();
   progressArea.classList.remove('show');
+  // YouTube 模式无本地进度条：横竖屏两套都清零，避免停在旧值
+  setProgressUI(0, 0, 0);
   ytFrame.style.display = 'block';
   ytFrame.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
   mode = 'youtube';
@@ -190,6 +205,7 @@ const openLocal = (index, restoreTime) => {
   const file = videoList[index];
 
   showLocal();
+  hideVideoError();
   resetAudioEnhanceAgc();
   // 远程地址；crossOrigin 已在 state.js 设置
   player.src = BASE_URL + file;

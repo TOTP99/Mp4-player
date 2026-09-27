@@ -208,8 +208,9 @@ const scanVideos = async ({ restoreOnFirst = false } = {}) => {
  * 若 DOM 已有且与 videoList 一一对应，只同步 active / 序号，避免整表重绘
  */
 const showList = async ({ restore = false, keepFile = null } = {}) => {
+  if (listTitle) listTitle.textContent = `远程视频 · 1.mp4 ~ ${MAX}.mp4`;
   if (!videoList.length) {
-    status.textContent = '未发现可用视频（远程 1.mp4 ~ 56.mp4）';
+    status.textContent = `未发现可用视频（远程 1.mp4 ~ ${MAX}.mp4）`;
     grid.innerHTML = '';
     updatePosInfo();
     return;

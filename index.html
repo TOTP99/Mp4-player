@@ -10,7 +10,10 @@
 <body>
 
   <div class="brand">
-    <span>TP制作🐈📽️</span>
+    <span class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2"/><path d="M15.5 10.5l6-3.5v10l-6-3.5"/><circle cx="7" cy="10" r="0.6" fill="currentColor"/><circle cx="11" cy="10" r="0.6" fill="currentColor"/><circle cx="7" cy="14" r="0.6" fill="currentColor"/><circle cx="11" cy="14" r="0.6" fill="currentColor"/></svg>
+      TP制作
+    </span>
     <span class="clock" id="clock">--月--日 星期- --:--:--</span>
   </div>
 
@@ -34,6 +37,11 @@
               <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
             </svg>
             <span>选择视频或粘贴 YouTube 链接</span>
+          </div>
+          <div class="video-error" id="videoError" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><circle cx="12" cy="16.4" r="0.7" fill="currentColor" stroke="none"/></svg>
+            <span id="videoErrorText">视频加载失败</span>
+            <button type="button" id="retryBtn">重试</button>
           </div>
         </div>
       </div>
@@ -112,6 +120,12 @@
                 <line x1="3" y1="18" x2="3.01" y2="18"></line>
               </svg>
             </button>
+            <button id="thumbBtn" title="设为代表图">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
@@ -124,7 +138,7 @@
   </div>
 
   <div class="list-panel" id="listPanel">
-    <h3>远程视频 · 1.mp4 ~ 56.mp4</h3>
+    <h3 id="listTitle">远程视频</h3>
     <div class="scan-bar" id="scanBar" aria-hidden="true"><span></span></div>
     <div class="grid" id="grid"></div>
     <div class="status" id="status"></div>

@@ -40,7 +40,12 @@ const currentTimeLand = $('currentTimeLand');
 const durationLand = $('durationLand');
 const fsBtn = $('fsBtn');
 const audioEnhanceBtn = $('audioEnhanceBtn');
+const thumbBtn = $('thumbBtn');
 const stage = $('stage');
+const videoError = $('videoError');
+const videoErrorText = $('videoErrorText');
+const retryBtn = $('retryBtn');
+const listTitle = $('listTitle');
 const screenWrap = document.querySelector('.screen-wrap');
 const clockEl = $('clock');
 

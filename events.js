@@ -21,7 +21,10 @@ function flashTip(msg, ms = 1600) {
 
 playUrlBtn.addEventListener('click', () => {
   const id = ytId(urlInput.value.trim());
-  if (!id) return alert('无法识别 YouTube 链接');
+  if (!id) {
+    flashTip('链接无法识别，换一个试试');
+    return;
+  }
   showYT(id);
 });
 
@@ -110,6 +113,9 @@ fsBtn.addEventListener('click', () => {
 });
 document.addEventListener('fullscreenchange', syncFsBtn);
 document.addEventListener('webkitfullscreenchange', syncFsBtn);
+// iOS Safari 上 <video> 自带全屏走 webkit 事件，同步按钮文案
+player.addEventListener('webkitbeginfullscreen', syncFsBtn);
+player.addEventListener('webkitendfullscreen', syncFsBtn);
 
 // ---- <video> 事件 ----
 player.addEventListener('play', () => {
@@ -130,7 +136,11 @@ player.addEventListener('ended', () => {
 });
 player.addEventListener('error', () => {
   if (mode !== 'local' || !videoList.length) return;
-  if (!sequentialPlay && !randomPlay) return;
+  if (!sequentialPlay && !randomPlay) {
+    // 普通模式：不再黑屏无提示，给错误遮罩 + 重试
+    showVideoError();
+    return;
+  }
   autoAdvance();
 });
 // timeupdate 高频：仅更新进度条，节流 ~5 次/秒；截图与 timeupdate 解耦
@@ -151,17 +161,33 @@ player.addEventListener('loadedmetadata', () => {
   );
 });
 
-// 双击画面 → 设为代表图（覆盖）；不改动右侧序号
-player.addEventListener('dblclick', async e => {
-  e.preventDefault();
+// 设为代表图：双击画面 或 点相机按钮（iOS 上双击手势不可靠，故加显式按钮）
+const captureAsThumb = async () => {
   const ok = await setThumbFromCurrent();
   if (ok) {
     const prev = nowPlaying.textContent;
-    nowPlaying.textContent = '✓ 已设为代表图';
+    nowPlaying.textContent = '已设为代表图';
     setTimeout(() => {
-      if (nowPlaying.textContent === '✓ 已设为代表图') nowPlaying.textContent = prev;
+      if (nowPlaying.textContent === '已设为代表图') nowPlaying.textContent = prev;
     }, 1200);
+  } else {
+    flashTip('截图失败，稍后再试');
   }
+};
+
+player.addEventListener('dblclick', e => {
+  e.preventDefault();
+  captureAsThumb();
+});
+
+thumbBtn?.addEventListener('click', () => {
+  captureAsThumb();
+});
+
+retryBtn?.addEventListener('click', () => {
+  if (mode !== 'local' || currentIndex < 0) return;
+  hideVideoError();
+  openLocal(currentIndex);
 });
 
 // ---- 画面左右滑动换视频（仅本地模式） ----
@@ -349,9 +375,10 @@ window.addEventListener('pagehide', () => {
   saveState(true);
 });
 
-// ---- 键盘（输入框聚焦时忽略） ----
+// ---- 键盘（输入框 / 可编辑区聚焦时忽略） ----
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT') return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
   switch (e.key) {
     case ' ':
     case 'k':
