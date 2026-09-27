@@ -412,7 +412,7 @@ body {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 3px 8px;
+  padding: 3px 6px;
 }
 
 #refreshBtn.spinning {
@@ -742,7 +742,7 @@ body {
 /* 竖屏紧凑：iPhone 14 竖屏 390×844，四边留呼吸 */
 @media (max-width: 600px) {
   body {
-    padding: 12px 16px 24px;
+    padding: 12px 14px 24px;
   }
   .brand {
     font-size: 0.7rem;
@@ -768,8 +768,10 @@ body {
     gap: 3px;
   }
   .controls .play {
+    /* 宽度预算(iPhone14竖屏390): 内宽342 = 左组106 + 模式59 + 右组162 + 组隙6 = 333, 余9px; 播放键勿超32px */
     font-size: 1.12rem;
-    padding: 2px 7px;
+    min-width: 32px;
+    padding: 2px 5px;
   }
   .title-bar {
     padding: 6px 10px;
