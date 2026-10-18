@@ -31,17 +31,21 @@
       <div class="stage-outer">
         <div class="stage" id="stage">
           <video id="player" playsinline preload="metadata"></video>
-          <iframe id="ytFrame" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+          <iframe id="ytFrame" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
           <div class="placeholder" id="placeholder">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
             </svg>
             <span>选择视频或粘贴 YouTube 链接</span>
           </div>
+          <div class="video-loading" id="videoLoading" hidden aria-hidden="true"><span></span></div>
           <div class="video-error" id="videoError" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><circle cx="12" cy="16.4" r="0.7" fill="currentColor" stroke="none"/></svg>
             <span id="videoErrorText">视频加载失败</span>
-            <button type="button" id="retryBtn">重试</button>
+            <div class="err-actions">
+              <button type="button" id="retryBtn">重试</button>
+              <button type="button" id="removeBtn" title="从列表移除这一项（之后刷新若仍能探测到会重新出现）">移除此项</button>
+            </div>
           </div>
         </div>
       </div>
