@@ -395,3 +395,38 @@ document.addEventListener('keydown', e => {
       break;
   }
 });
+
+/* 长按刷新键：全部歌曲进度清零，从头播放 */
+async function resetAllProgress() {
+  try {
+    const prev = (await loadState()) || {};
+    await idbSet('state', 'playback', { ...prev, byFile: {} });
+    return true;
+  } catch { return false; }
+}
+(function () {
+  let pressTimer = null;
+  let longPressed = false;
+  const LONG_MS = 600;
+  refreshBtn.addEventListener('pointerdown', () => {
+    longPressed = false;
+    pressTimer = setTimeout(async () => {
+      longPressed = true;
+      try { if (navigator.vibrate) navigator.vibrate(30); } catch {}
+      if (confirm('将全部歌曲的播放进度清零，从头开始播放？')) {
+        const ok = await resetAllProgress();
+        flashTip(ok ? '已清零 · 全部从头播放' : '清零失败');
+      }
+    }, LONG_MS);
+  });
+  const cancelPress = () => {
+    if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+  };
+  refreshBtn.addEventListener('pointerup', cancelPress);
+  refreshBtn.addEventListener('pointerleave', cancelPress);
+  refreshBtn.addEventListener('pointercancel', cancelPress);
+  // 长按后吞掉随之而来的 click，避免误触发刷新
+  refreshBtn.addEventListener('click', e => {
+    if (longPressed) { e.stopImmediatePropagation(); e.preventDefault(); longPressed = false; }
+  }, true);
+})();
