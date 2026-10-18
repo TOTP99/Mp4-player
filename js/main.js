@@ -156,9 +156,6 @@ const scanVideos = async ({ restoreOnFirst = false } = {}) => {
   scanBar?.classList.add('active');
   try {
     const before = videoList.slice();
-    // 合并前记下正在播的文件，避免 videoList 替换后 index 对不上
-    const playingFile =
-      mode === 'local' && currentIndex >= 0 ? before[currentIndex] : null;
 
     // 启动且已有缓存 → 轻量增量；否则（手动刷新 / 无缓存）全量
     let scanned;
@@ -167,6 +164,11 @@ const scanVideos = async ({ restoreOnFirst = false } = {}) => {
     } else {
       scanned = await probeAll();
     }
+
+    // 扫描可能耗时数秒：在「合并这一刻」才取正在播的文件（扫描期间 videoList 不变，index 有效）。
+    // 若在扫描开始前取，期间用户切了别的视频，会被 keepFile 拉回旧片。
+    const playingFile =
+      mode === 'local' && currentIndex >= 0 ? videoList[currentIndex] : null;
 
     const merged = Array.from(new Set([...before, ...scanned])).sort(
       (a, b) => parseInt(a, 10) - parseInt(b, 10)
@@ -232,7 +234,8 @@ const showList = async ({ restore = false, keepFile = null } = {}) => {
   }
 
   // 1) 启动恢复
-  if (restore) {
+  // 正在看 YouTube 时（如扫描期间贴了链接），列表更新/恢复进度都不能抢走画面
+  if (restore && mode !== 'youtube') {
     const state = await loadState();
     if (state?.file && videoList.includes(state.file)) {
       const idx = videoList.indexOf(state.file);
@@ -275,7 +278,7 @@ const showList = async ({ restore = false, keepFile = null } = {}) => {
   }
 
   // 4) 没有任何可保持的播放 → 默认第一集
-  if (videoList.length) openLocal(0);
+  if (videoList.length && mode !== 'youtube') openLocal(0);
 };
 
 (async () => {

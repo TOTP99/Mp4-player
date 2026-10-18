@@ -58,19 +58,21 @@ function resetAudioEnhanceAgc() {
   } catch {}
 }
 
-/* 每首歌响度记忆 */
-async function saveGainForFile(file, gain) {
-  try {
-    const prev = (await loadState()) || {};
-    const gainByFile = prev.gainByFile && typeof prev.gainByFile === 'object' ? { ...prev.gainByFile } : {};
-    gainByFile[file] = gain;
-    await idbSet('state', 'playback', { ...prev, gainByFile });
-  } catch {}
-}
+/* 每首歌响度记忆：直接读写内存缓存 _pb（同步），不再对 IDB 做并发的读-改-写 */
 let _pendingGainRestore = null;
+let _gainTok = 0;
+function saveGainForFile(file, gain) {
+  if (!file || !audioEnhanceOn || typeof gain !== 'number' || !isFinite(gain) || !_pb) return;
+  if (!_pb.gainByFile || typeof _pb.gainByFile !== 'object') _pb.gainByFile = {};
+  _pb.gainByFile[file] = gain;
+}
 async function restoreGainForFile(file) {
+  const tok = ++_gainTok;
+  _pendingGainRestore = null;
+  if (!audioEnhanceOn) return; // 增强关闭时不应用增益，否则 AGC 已停、音量会卡在旧值
   try {
-    const st = (await loadState()) || {};
+    const st = await loadState();
+    if (tok !== _gainTok) return; // 等待期间又切了歌
     const g = st.gainByFile && typeof st.gainByFile[file] === 'number' ? st.gainByFile[file] : null;
     if (g == null) return;
     if (audioEnhancer && typeof audioEnhancer.setGain === 'function') {
@@ -93,15 +95,34 @@ function setAudioEnhance(on) {
       ? '音质增强（开）：降噪 + 响度平衡'
       : '音质增强（关）';
   }
+  // 重新打开增强：把当前这首记住的响度补上
+  if (audioEnhanceOn && mode === 'local' && currentIndex >= 0) {
+    restoreGainForFile(videoList[currentIndex]);
+  }
 }
 
-/** 读取完整 playback 对象（兼容旧数据：只有 file/time） */
+/**
+ * playback 状态的内存缓存（唯一真相）。
+ * 之前每次存档都「异步读 IDB → 改 → 写」，切歌时多路并发会互相覆盖，
+ * 且 pagehide 里的两次异步往返来不及完成。现在：读一次进缓存，之后同步改缓存、
+ * 同步发起一次 put（事务在 pagehide 同步阶段即已提交给浏览器）。
+ */
+let _pb = null;
+let _pbLoading = null;
 async function loadState() {
-  try {
-    return (await idbGet('state', 'playback')) || null;
-  } catch {
-    return null;
+  if (_pb) return _pb;
+  if (!_pbLoading) {
+    _pbLoading = (async () => {
+      let s = null;
+      try {
+        s = await idbGet('state', 'playback');
+      } catch {}
+      if (!_pb) _pb = s && typeof s === 'object' ? s : {};
+      _pbLoading = null;
+      return _pb;
+    })();
   }
+  return _pbLoading;
 }
 
 /** 某文件已保存的进度秒数 */
@@ -109,7 +130,6 @@ async function getSavedTime(file) {
   if (!file) return 0;
   try {
     const state = await loadState();
-    if (!state) return 0;
     if (state.byFile && typeof state.byFile[file] === 'number') {
       return state.byFile[file];
     }
@@ -122,45 +142,42 @@ async function getSavedTime(file) {
 }
 
 /**
- * 把当前播放进度写入 IndexedDB。
+ * 当前文件「进度可信」的标记：只有 loadedmetadata 之后且已应用恢复进度，
+ * 才允许把 player.currentTime 写进存档。否则刚换 src 时 currentTime 还是 0，
+ * 此时定时存档 / 切后台 / 关页会把该集已存进度覆盖成 0。
+ */
+let _readyFile = null;
+let _openTok = 0; // 每次 openLocal / showYT 递增，用来作废过期的异步回调
+
+/**
+ * 把当前播放进度写入存档（同步改缓存 + 同步发起一次 put）。
  * - file / time：上次打开的那一集（启动时恢复用）
- * - byFile：每个文件各自的进度
- * 播到结尾附近时记 0，下次从头播。
+ * - byFile：每个文件各自的进度；播到结尾附近记 0，下次从头播
+ * - gainByFile：每首歌响度记忆（只在该集已开播后才更新）
  */
 let _saveStateTimer = null;
 
-async function flushState() {
+function flushState() {
   if (mode !== 'local' || currentIndex < 0) return;
   const file = videoList[currentIndex];
   if (!file) return;
-
-  let time = player.currentTime || 0;
-  const dur = player.duration;
-  // 接近结束：视为看完，下次从头开始
-  if (isFinite(dur) && dur > 0 && time >= dur - 1.5) {
-    time = 0;
+  if (!_pb) {
+    loadState().then(() => flushState());
+    return;
   }
-
-  try {
-    const prev = (await loadState()) || {};
-    const byFile =
-      prev.byFile && typeof prev.byFile === 'object' ? { ...prev.byFile } : {};
-    byFile[file] = time;
-    // 每首歌响度记忆：存 AGC 学到的增益
-    const gainByFile =
-      prev.gainByFile && typeof prev.gainByFile === 'object' ? { ...prev.gainByFile } : {};
-    try {
-      if (audioEnhancer && typeof audioEnhancer.getGain === 'function') {
-        gainByFile[file] = audioEnhancer.getGain();
-      }
-    } catch {}
-    await idbSet('state', 'playback', {
-      file,
-      time,
-      byFile,
-      gainByFile
-    });
-  } catch {}
+  if (_readyFile === file) {
+    let time = player.currentTime || 0;
+    const dur = player.duration;
+    if (isFinite(dur) && dur > 0 && time >= dur - 1.5) time = 0; // 接近结束：视为看完
+    if (!_pb.byFile || typeof _pb.byFile !== 'object') _pb.byFile = {};
+    _pb.byFile[file] = time;
+    _pb.file = file;
+    _pb.time = time;
+    if (audioEnhancer && typeof audioEnhancer.getGain === 'function') {
+      saveGainForFile(file, audioEnhancer.getGain());
+    }
+  }
+  idbSet('state', 'playback', _pb);
 }
 
 /** @param {boolean} [immediate] 为 true 时取消防抖并立刻写入 */
@@ -216,6 +233,8 @@ const showYT = id => {
   player.pause();
   player.removeAttribute('src');
   player.load();
+  _readyFile = null;
+  _openTok++;
   hideAll();
   progressArea.classList.remove('show');
   // YouTube 模式无本地进度条：横竖屏两套都清零，避免停在旧值
@@ -238,10 +257,13 @@ const openLocal = (index, restoreTime) => {
   if (index < 0 || index >= videoList.length) return;
   // 切歌前：存当前歌的响度
   try {
-    if (mode === 'local' && currentIndex >= 0 && videoList[currentIndex] && audioEnhancer && typeof audioEnhancer.getGain === 'function') {
+    // 只有旧片已开播才存（否则刷歌时会把刚恢复/刚重置的 1 写回去）
+    if (mode === 'local' && currentIndex >= 0 && videoList[currentIndex] && _readyFile === videoList[currentIndex] && audioEnhancer && typeof audioEnhancer.getGain === 'function') {
       saveGainForFile(videoList[currentIndex], audioEnhancer.getGain());
     }
   } catch {}
+  _readyFile = null;
+  const openTok = ++_openTok;
   currentIndex = index;
   const file = videoList[index];
 
@@ -263,7 +285,7 @@ const openLocal = (index, restoreTime) => {
 
   const onMeta = async () => {
     player.removeEventListener('loadedmetadata', onMeta);
-    pendingMetaHandler = null;
+    if (pendingMetaHandler === onMeta) pendingMetaHandler = null;
 
     ensureAudioEnhance();
 
@@ -271,9 +293,12 @@ const openLocal = (index, restoreTime) => {
     if (typeof t !== 'number') {
       t = await getSavedTime(file);
     }
+    // 等待期间用户可能已切到别的视频 / YouTube：这个回调作废，别去动新片
+    if (openTok !== _openTok || mode !== 'local') return;
     if (typeof t === 'number' && t > 0.5 && isFinite(player.duration) && t < player.duration - 1) {
       player.currentTime = t;
     }
+    _readyFile = file; // 从此 currentTime 才可信，允许写进存档
     player.play().catch(() => {});
   };
 

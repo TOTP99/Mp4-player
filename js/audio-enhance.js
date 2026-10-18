@@ -106,12 +106,10 @@
       if (!enabled || !connected) return;
       if (ctx.state !== "running") return;
       var rms = readRms();
-      var desired;
-      if (rms < cfg.silenceRms) {
-        desired = 1;
-      } else {
-        desired = clamp(cfg.targetRms / rms, cfg.agcMin, cfg.agcMax);
-      }
+      // 静音 / 暂停 / 加载中：保持当前增益，不往 1 回拉
+      // （否则刚恢复的「每首歌响度记忆」在开播前就被冲掉，存档也会存进 1）
+      if (rms < cfg.silenceRms) return;
+      var desired = clamp(cfg.targetRms / rms, cfg.agcMin, cfg.agcMax);
       desired = 1 + (desired - 1) * cfg.wet;
       smoothGain += (desired - smoothGain) * cfg.agcSmooth;
       try {

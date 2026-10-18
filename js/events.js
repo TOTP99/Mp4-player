@@ -234,36 +234,42 @@ const ratioFromEvent = (bar, e) => {
   return Math.min(1, Math.max(0, (point.clientX - rect.left) / rect.width));
 };
 
-const applySeek = (bar, e) => {
+// 拖动期间只更新 UI；松手才真正 seek（远程视频每次 seek 都是 Range 请求，逐帧 seek 会狂刷请求）
+let seekRatio = 0;
+
+const previewSeek = (bar, e) => {
   if (mode !== 'local' || !bar || !player.duration) return;
-  const ratio = ratioFromEvent(bar, e);
-  const t = ratio * player.duration;
-  player.currentTime = t;
-  setProgressUI(ratio * 100, t, player.duration);
+  seekRatio = ratioFromEvent(bar, e);
+  setProgressUI(seekRatio * 100, seekRatio * player.duration, player.duration);
 };
 
 const onSeekStart = (bar, e) => {
-  if (mode !== 'local' || !bar) return;
+  if (mode !== 'local' || !bar || !player.duration) return;
   if (e.cancelable) e.preventDefault();
   seeking = true;
   seekBar = bar;
   bar.classList.add('is-dragging');
-  applySeek(bar, e);
+  previewSeek(bar, e);
 };
 
 const onSeekMove = e => {
   if (!seeking || !seekBar) return;
   if (e.cancelable) e.preventDefault();
-  applySeek(seekBar, e);
+  previewSeek(seekBar, e);
 };
 
-const onSeekEnd = e => {
+// commit=false 用于 pointercancel / touchcancel：其坐标不可信（常为 0），不能当成"拖到最左"
+const onSeekEnd = (e, commit = true) => {
   if (!seeking) return;
-  if (seekBar && e) applySeek(seekBar, e);
-  if (seekBar) seekBar.classList.remove('is-dragging');
+  const bar = seekBar;
+  if (commit && bar && e) previewSeek(bar, e);
+  if (bar) bar.classList.remove('is-dragging');
   seeking = false;
   seekBar = null;
-  saveState(true);
+  if (commit && mode === 'local' && player.duration) {
+    player.currentTime = seekRatio * player.duration;
+    saveState(true);
+  }
 };
 
 const bindSeekBar = bar => {
@@ -282,8 +288,8 @@ const bindSeekBar = bar => {
       if (!seeking || seekBar !== bar) return;
       onSeekMove(e);
     });
-    bar.addEventListener('pointerup', onSeekEnd);
-    bar.addEventListener('pointercancel', onSeekEnd);
+    bar.addEventListener('pointerup', e => onSeekEnd(e, true));
+    bar.addEventListener('pointercancel', e => onSeekEnd(e, false));
     return;
   }
 
@@ -297,8 +303,8 @@ const bindSeekBar = bar => {
     },
     { passive: false }
   );
-  bar.addEventListener('touchend', onSeekEnd);
-  bar.addEventListener('touchcancel', onSeekEnd);
+  bar.addEventListener('touchend', e => onSeekEnd(e, true));
+  bar.addEventListener('touchcancel', e => onSeekEnd(e, false));
 };
 
 bindSeekBar(progressBar);
@@ -366,6 +372,8 @@ window.addEventListener('pagehide', () => {
 
 // ---- 键盘（输入框 / 可编辑区聚焦时忽略） ----
 document.addEventListener('keydown', e => {
+  // 带修饰键的是浏览器/系统快捷键（Cmd+R 刷新、Ctrl+F 查找…），不能吞
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
   const t = e.target;
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
   switch (e.key) {
@@ -399,8 +407,10 @@ document.addEventListener('keydown', e => {
 /* 长按刷新键：全部歌曲进度清零，从头播放 */
 async function resetAllProgress() {
   try {
-    const prev = (await loadState()) || {};
-    await idbSet('state', 'playback', { ...prev, byFile: {} });
+    const st = await loadState(); // 内存缓存：必须改缓存本身，否则下次存档会把旧进度写回来
+    st.byFile = {};
+    st.time = 0;
+    await idbSet('state', 'playback', st);
     return true;
   } catch { return false; }
 }
