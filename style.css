@@ -8,8 +8,8 @@
   --border-strong: #3d4d62;
   --text: #eef3f9;
   --muted: #8b9cb0;
-  --accent: #4db8ff;
-  --accent-dim: #2a7ab8;
+  --accent: #e8c56a;
+  --accent-dim: #a68b3c;
   --gold: #e8c56a;
   --gold-bright: #f5d98a;
   --gold-dim: #a68b3c;
@@ -53,7 +53,6 @@ body {
   font-weight: 500;
   letter-spacing: 0.08em;
   color: var(--gold);
-  text-shadow: 0 0 20px rgba(232, 197, 106, 0.25);
 }
 .brand .clock {
   font-variant-numeric: tabular-nums;
@@ -96,9 +95,9 @@ body {
   pointer-events: none;
 }
 
-/* 四角金标：取景框式短角标，比满框更克制 */
+/* 四角标已移除（商业克制原则） */
 .corner {
-  position: absolute;
+  display: none;
   width: 16px;
   height: 16px;
   pointer-events: none;
@@ -307,7 +306,7 @@ body {
   background: linear-gradient(90deg, var(--accent-dim), var(--accent));
   border-radius: 2px;
   pointer-events: none;
-  box-shadow: 0 0 8px rgba(77, 184, 255, 0.4);
+  box-shadow: 0 0 8px rgba(232, 197, 106, 0.4);
 }
 .progress-filled::after {
   content: '';
@@ -319,7 +318,7 @@ body {
   margin-top: -7px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 0 3px rgba(5, 7, 11, 0.9), 0 0 10px rgba(77, 184, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(5, 7, 11, 0.9), 0 0 10px rgba(232, 197, 106, 0.5);
   opacity: 0;
   transition: opacity 0.12s;
 }
@@ -444,7 +443,7 @@ body {
 }
 .url-row input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(77, 184, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(232, 197, 106, 0.2);
 }
 .url-row input::placeholder {
   color: #4a5a6c;
@@ -498,7 +497,7 @@ body {
   width: 0;
   background: linear-gradient(90deg, var(--accent-dim), var(--accent));
   border-radius: 2px;
-  box-shadow: 0 0 6px rgba(77, 184, 255, 0.35);
+  box-shadow: 0 0 6px rgba(232, 197, 106, 0.35);
 }
 .controls-center .time-inline {
   display: flex;
@@ -660,15 +659,36 @@ body {
 }
 .card .thumb .num {
   position: absolute;
-  top: 4px;
-  left: 4px;
+  top: 6px;
+  left: 6px;
   background: rgba(0, 0, 0, 0.72);
   color: var(--gold-bright);
   font-size: 0.65rem;
   font-weight: 600;
-  padding: 2px 5px;
-  border-radius: 2px;
+  padding: 2px 6px;
+  border-radius: 3px;
   letter-spacing: 0.02em;
+}
+/* 悬停播放暗示：中央圆形播放钮 */
+.card .thumb .hover-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity 0.18s;
+  pointer-events: none;
+}
+.card .thumb .hover-play svg {
+  width: 40px;
+  height: 40px;
+  color: var(--gold-bright);
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+}
+.card:hover .thumb .hover-play {
+  opacity: 1;
 }
 
 .card .name {
