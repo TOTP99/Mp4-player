@@ -23,7 +23,8 @@ function ensureAudioEnhance() {
       if (!AC) return;
       audioCtx = new AC();
     }
-    if (audioCtx.state === 'suspended') {
+    if (audioCtx.state !== 'running') {
+      // suspended（未手势）或 iOS 的 interrupted（切后台/来电后）：不恢复就是有画面没声音
       audioCtx.resume().catch(() => {});
     }
     if (!mediaSourceNode) {
@@ -92,7 +93,7 @@ function setAudioEnhance(on) {
   if (audioEnhanceBtn) {
     audioEnhanceBtn.classList.toggle('active', audioEnhanceOn);
     audioEnhanceBtn.title = audioEnhanceOn
-      ? '音质增强（开）：降噪 + 响度平衡'
+      ? '音质增强（开）：滤波 + 压缩 + 响度平衡'
       : '音质增强（关）';
   }
   // 重新打开增强：把当前这首记住的响度补上
@@ -358,6 +359,8 @@ function setPlayMode(modeName) {
     sequentialPlay = false;
     randomPlay = false;
   }
+  _nextPick = -1; // 预选的随机下一首作废
+  if (!sequentialPlay && !randomPlay) cancelPrefetch();
   syncPlayModeUI();
 }
 
@@ -387,12 +390,7 @@ const playNextRandom = () => {
     openLocal(0);
     return;
   }
-  let next = currentIndex;
-  for (let i = 0; i < 12; i++) {
-    next = Math.floor(Math.random() * videoList.length);
-    if (next !== currentIndex) break;
-  }
-  if (next === currentIndex) next = (currentIndex + 1) % videoList.length;
+  const next = pickRandomNext();
   openLocal(next);
 };
 
@@ -401,13 +399,52 @@ const autoAdvance = () => {
   else if (sequentialPlay) playNextSequential();
 };
 
-/* ── 低网速优化：顺序播放时预加载下一首 ── */
+/* ── 低网速优化：顺序/随机模式下预加载下一首 ──
+ * - 随机模式：先「预选」下一首（_nextPick），预加载的和实际播的是同一首
+ * - 不和当前片抢带宽：当前片已缓冲到结尾，或播到 85% 以后才开始；省流模式不预加载
+ * - 实际切到这首、主播放器 canplay 后释放预加载元素（events.js），避免双份连接/内存
+ */
+let _nextPick = -1;
+const peekRandomNext = () => {
+  if (_nextPick >= 0 && _nextPick < videoList.length && _nextPick !== currentIndex) return _nextPick;
+  let next = currentIndex;
+  for (let i = 0; i < 12; i++) {
+    next = Math.floor(Math.random() * videoList.length);
+    if (next !== currentIndex) break;
+  }
+  if (next === currentIndex) next = (currentIndex + 1) % videoList.length;
+  _nextPick = next;
+  return next;
+};
+const pickRandomNext = () => {
+  const n = peekRandomNext();
+  _nextPick = -1;
+  return n;
+};
+
 let _prefetchVideo = null;
 let _prefetchFile = null;
 function prefetchNext() {
   if (mode !== 'local' || !videoList.length) return;
   if (!sequentialPlay && !randomPlay) return;
-  const next = currentIndex + 1 < videoList.length ? currentIndex + 1 : 0;
+  const dur = player.duration;
+  if (!isFinite(dur) || dur <= 0) return;
+  const pct = (player.currentTime / dur) * 100;
+  if (pct < 65) return;
+  let fullyBuffered = false;
+  try {
+    const b = player.buffered;
+    fullyBuffered = b.length > 0 && b.end(b.length - 1) >= dur - 1;
+  } catch {}
+  if (!fullyBuffered && pct < 85) return;
+  try {
+    const c = navigator.connection;
+    if (c && c.saveData) return;
+  } catch {}
+
+  const next = randomPlay
+    ? peekRandomNext()
+    : currentIndex + 1 < videoList.length ? currentIndex + 1 : 0;
   const file = videoList[next];
   if (!file || file === _prefetchFile) return;
   // 切掉旧的预加载
@@ -418,6 +455,7 @@ function prefetchNext() {
       _prefetchVideo = document.createElement('video');
       _prefetchVideo.preload = 'auto';
       _prefetchVideo.muted = true;
+      _prefetchVideo.crossOrigin = 'anonymous'; // 与主播放器同一请求模式，便于复用 HTTP 缓存
       _prefetchVideo.style.display = 'none';
       document.body.appendChild(_prefetchVideo);
     }

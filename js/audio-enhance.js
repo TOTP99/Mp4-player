@@ -1,6 +1,6 @@
 /**
  * audio-enhance.js —— 视频音质 / 响度处理
- * 高通+低通降噪、压缩、AGC 响度平衡、软限幅
+ * 高通+低通滤波、压缩、AGC 响度平衡、软限幅（关闭时干路直通，完全旁路）
  */
 (function (global) {
   "use strict";
@@ -80,6 +80,11 @@
     limiter.curve = makeLimiterCurve(cfg.limiterThreshold);
     limiter.oversample = "2x";
 
+    // 干/湿双路：湿路 = 滤波+压缩+AGC+限幅；干路 = 原声直通。
+    // 「关」时湿路静音、干路开，真正绕过全部处理（之前只是把 AGC 增益置 1）。
+    var wetOut = ctx.createGain();
+    var dryGain = ctx.createGain();
+
     var meter = ctx.createAnalyser();
     meter.fftSize = 2048;
     meter.smoothingTimeConstant = 0.55;
@@ -129,6 +134,21 @@
       }
     }
 
+    /** 按 enabled 切换干/湿路；immediate=true 直接赋值（首次接线，无渐变） */
+    function applyBypass(immediate) {
+      var w = enabled ? 1 : 0;
+      var d = enabled ? 0 : 1;
+      try {
+        if (immediate) {
+          wetOut.gain.value = w;
+          dryGain.gain.value = d;
+        } else {
+          wetOut.gain.setTargetAtTime(w, ctx.currentTime, 0.03);
+          dryGain.gain.setTargetAtTime(d, ctx.currentTime, 0.03);
+        }
+      } catch (e) {}
+    }
+
     function connectFrom(source, destination) {
       if (!source || !destination || connected) return connected;
       try {
@@ -137,9 +157,13 @@
         lowpass.connect(compressor);
         compressor.connect(agcGain);
         agcGain.connect(limiter);
-        limiter.connect(destination);
+        limiter.connect(wetOut);
+        wetOut.connect(destination);
+        source.connect(dryGain);
+        dryGain.connect(destination);
         compressor.connect(meter);
         connected = true;
+        applyBypass(true);
         startAgc();
       } catch (e) {
         connected = false;
@@ -156,6 +180,7 @@
           agcGain.gain.setTargetAtTime(1, ctx.currentTime, 0.05);
         } catch (e) {}
       }
+      if (connected) applyBypass(false);
     }
 
     function setWet(w) {

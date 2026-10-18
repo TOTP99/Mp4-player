@@ -56,7 +56,7 @@ shuffleBtn?.addEventListener('click', async () => {
 audioEnhanceBtn?.addEventListener('click', async () => {
   setAudioEnhance(!audioEnhanceOn);
   await saveUI({ audioEnhance: audioEnhanceOn });
-  flashTip(audioEnhanceOn ? '降噪音质 · 开' : '降噪音质 · 关');
+  flashTip(audioEnhanceOn ? '音质增强 · 开' : '音质增强 · 关');
 });
 
 refreshBtn.addEventListener('click', async () => {
@@ -111,6 +111,7 @@ player.addEventListener('webkitendfullscreen', syncFsBtn);
 
 // ---- <video> 事件 ----
 player.addEventListener('play', () => {
+  ensureAudioEnhance(); // 顺带 resume AudioContext（iOS 切后台回来常是 interrupted：有画面没声音）
   playBtn.innerHTML = ICON_PAUSE;
   sequentialSkipCount = 0; // 成功开始播放，清零失败跳过计数
 });
@@ -147,6 +148,18 @@ player.addEventListener('timeupdate', () => {
   // 播到 65% 预加载下一首（顺序/随机模式）
   if (pct >= 65 && typeof prefetchNext === 'function') prefetchNext();
 });
+// 主播放器已能播放：若正在播的就是预加载的那首，释放预加载元素（防双份连接/内存）
+player.addEventListener('canplay', () => {
+  if (_prefetchFile && mode === 'local' && videoList[currentIndex] === _prefetchFile) cancelPrefetch();
+});
+// 任意点按都顺手恢复被系统挂起的 AudioContext（iOS 来电/切后台后）
+document.addEventListener(
+  'pointerdown',
+  () => {
+    if (audioCtx && audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
+  },
+  { passive: true }
+);
 player.addEventListener('loadedmetadata', () => {
   setProgressUI(
     player.duration ? (player.currentTime / player.duration) * 100 : 0,
@@ -364,6 +377,7 @@ document.addEventListener('visibilitychange', () => {
   } else {
     startBgTimers();
     startClock();
+    if (audioCtx && audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
   }
 });
 window.addEventListener('pagehide', () => {
