@@ -33,3 +33,54 @@ const createCard = name => {
   card.append(thumb, label);
   return card;
 };
+
+/**
+ * 从列表移除一项（失效视频）：同步 videoList / knownVideos / 进度 / 卡片，并接着播相邻一项。
+ * 不加黑名单：若之后手动刷新仍能探测到这个文件，它会重新出现（适合偶发网络错误的误删）。
+ */
+const removeFromList = async file => {
+  const idx = videoList.indexOf(file);
+  if (idx < 0) return;
+  videoList = videoList.filter(n => n !== file);
+  captured.delete(file);
+  try {
+    await idbSet('state', 'knownVideos', videoList);
+  } catch {}
+  try {
+    const st = await loadState();
+    if (st.byFile) delete st.byFile[file];
+    if (st.gainByFile) delete st.gainByFile[file];
+    if (st.file === file) {
+      delete st.file;
+      st.time = 0;
+    }
+    st.ts = Date.now();
+    lsBackup(st);
+    idbSet('state', 'playback', st);
+  } catch {}
+  const card = grid.querySelector(`[data-file="${safeFileSel(file)}"]`);
+  if (card) card.remove();
+
+  if (!videoList.length) {
+    mode = null;
+    currentIndex = -1;
+    _readyFile = null;
+    _openTok++;
+    try {
+      player.pause();
+      player.removeAttribute('src');
+      player.load();
+    } catch {}
+    hideAll();
+    placeholder.style.display = '';
+    progressArea.classList.remove('show');
+    setProgressUI(0, 0, 0);
+    nowPlaying.textContent = '准备播放';
+    playBtn.innerHTML = ICON_PLAY;
+    updatePosInfo();
+    status.textContent = `未发现可用视频（远程 1.mp4 ~ ${MAX}.mp4）`;
+    return;
+  }
+  status.textContent = '共 ' + videoList.length + ' 个视频（已移除 ' + file + '）';
+  openLocal(Math.min(idx, videoList.length - 1));
+};

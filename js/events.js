@@ -148,6 +148,33 @@ player.addEventListener('timeupdate', () => {
   // 播到 65% 预加载下一首（顺序/随机模式）
   if (pct >= 65 && typeof prefetchNext === 'function') prefetchNext();
 });
+// ---- 缓冲/加载提示：延迟 350ms 才显示，避免正常切换时闪一下 ----
+let _loadingTimer = null;
+function setLoading(on) {
+  if (!videoLoading) return;
+  if (on) {
+    if (_loadingTimer || !videoLoading.hidden) return;
+    _loadingTimer = setTimeout(() => {
+      _loadingTimer = null;
+      if (mode === 'local') videoLoading.hidden = false;
+    }, 350);
+  } else {
+    if (_loadingTimer) {
+      clearTimeout(_loadingTimer);
+      _loadingTimer = null;
+    }
+    videoLoading.hidden = true;
+  }
+}
+['loadstart', 'waiting', 'seeking'].forEach(n =>
+  player.addEventListener(n, () => {
+    if (mode === 'local') setLoading(true);
+  })
+);
+['canplay', 'playing', 'seeked', 'error', 'emptied', 'pause', 'ended'].forEach(n =>
+  player.addEventListener(n, () => setLoading(false))
+);
+
 // 主播放器已能播放：若正在播的就是预加载的那首，释放预加载元素（防双份连接/内存）
 player.addEventListener('canplay', () => {
   if (_prefetchFile && mode === 'local' && videoList[currentIndex] === _prefetchFile) cancelPrefetch();
@@ -186,6 +213,11 @@ thumbBtn?.addEventListener('click', () => {
   captureAsThumb();
 });
 
+removeBtn?.addEventListener('click', () => {
+  if (mode !== 'local' || currentIndex < 0) return;
+  removeFromList(videoList[currentIndex]);
+});
+
 retryBtn?.addEventListener('click', () => {
   if (mode !== 'local' || currentIndex < 0) return;
   hideVideoError();
@@ -196,6 +228,7 @@ retryBtn?.addEventListener('click', () => {
 let swipeStartX = 0;
 let swipeStartY = 0;
 let swipeTracking = false;
+let _swipeJustHandled = false;
 
 if (stage) {
   stage.addEventListener(
@@ -220,6 +253,9 @@ if (stage) {
       const dy = t.clientY - swipeStartY;
       // 水平位移足够大，且明显大于竖直，才算换片手势
       if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+      // 刚换完片，别让随后的 click 当成「点画面暂停」
+      _swipeJustHandled = true;
+      setTimeout(() => (_swipeJustHandled = false), 450);
       if (dx < 0) playNext();
       else playPrev();
     },
@@ -234,6 +270,13 @@ if (stage) {
     { passive: true }
   );
 }
+
+// 点画面：播放/暂停（仅本地模式；错误遮罩显示时不响应；刚滑动换片后的 click 忽略）
+stage?.addEventListener('click', () => {
+  if (mode !== 'local' || _swipeJustHandled) return;
+  if (videoError && !videoError.hidden) return;
+  playBtn.click();
+});
 
 // ---- 进度条拖拽（优先 Pointer Events，旧环境 fallback touch） ----
 let seeking = false;
@@ -424,6 +467,8 @@ async function resetAllProgress() {
     const st = await loadState(); // 内存缓存：必须改缓存本身，否则下次存档会把旧进度写回来
     st.byFile = {};
     st.time = 0;
+    st.ts = Date.now();
+    lsBackup(st);
     await idbSet('state', 'playback', st);
     return true;
   } catch { return false; }

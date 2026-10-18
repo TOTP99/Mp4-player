@@ -15,7 +15,24 @@ const fmt = sec => {
 
 const ytId = url => {
   if (!url || typeof url !== 'string') return null;
-  const m = url.match(
+  const s = url.trim();
+  const ID = /^[a-zA-Z0-9_-]{11}$/;
+  // 先按 URL 解析：支持 watch?list=…&v=ID 这类 v 不紧跟 watch? 的链接，以及不带协议的写法
+  try {
+    const u = new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s);
+    const host = u.hostname.replace(/^(www\.|m\.|music\.)/, '');
+    if (host === 'youtu.be') {
+      const id = u.pathname.slice(1).split('/')[0];
+      if (ID.test(id)) return id;
+    } else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+      const v = u.searchParams.get('v');
+      if (v && ID.test(v)) return v;
+      const m = u.pathname.match(/^\/(?:embed|shorts|live|v)\/([a-zA-Z0-9_-]{11})/);
+      if (m) return m[1];
+    }
+  } catch {}
+  // 兜底：沿用原正则（粘贴了带前后文字的链接等）
+  const m = s.match(
     /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/
   );
   return m ? m[1] : null;

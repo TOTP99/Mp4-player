@@ -110,6 +110,28 @@ function setAudioEnhance(on) {
  */
 let _pb = null;
 let _pbLoading = null;
+
+/*
+ * localStorage 同步备份（进度 + 最后一集 + 响度）。
+ * 作用：pagehide / 页面被系统杀掉时，IndexedDB 的写入未必来得及提交，而 localStorage 是同步写。
+ * 注意：它不能对抗 iOS ITP 的 7 天清理（ITP 清的是该站点全部脚本可写存储）。
+ * 启动时与 IDB 比 ts，取较新的一份。
+ */
+const LS_KEY = 'cinema_playback_v1';
+function lsBackup(st) {
+  try {
+    localStorage.setItem(
+      LS_KEY,
+      JSON.stringify({
+        file: st.file,
+        time: st.time,
+        byFile: st.byFile || {},
+        gainByFile: st.gainByFile || {},
+        ts: st.ts || 0
+      })
+    );
+  } catch {}
+}
 async function loadState() {
   if (_pb) return _pb;
   if (!_pbLoading) {
@@ -118,6 +140,11 @@ async function loadState() {
       try {
         s = await idbGet('state', 'playback');
       } catch {}
+      let b = null;
+      try {
+        b = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+      } catch {}
+      if (b && typeof b === 'object' && (!s || typeof s !== 'object' || (b.ts || 0) > (s.ts || 0))) s = b;
       if (!_pb) _pb = s && typeof s === 'object' ? s : {};
       _pbLoading = null;
       return _pb;
@@ -174,9 +201,11 @@ function flushState() {
     _pb.byFile[file] = time;
     _pb.file = file;
     _pb.time = time;
+    _pb.ts = Date.now();
     if (audioEnhancer && typeof audioEnhancer.getGain === 'function') {
       saveGainForFile(file, audioEnhancer.getGain());
     }
+    lsBackup(_pb);
   }
   idbSet('state', 'playback', _pb);
 }
@@ -198,6 +227,7 @@ function saveState(immediate) {
 }
 
 const hideAll = () => {
+  if (typeof setLoading === 'function') setLoading(false);
   player.style.display = 'none';
   ytFrame.style.display = 'none';
   placeholder.style.display = 'none';
