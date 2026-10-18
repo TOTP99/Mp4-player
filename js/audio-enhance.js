@@ -171,11 +171,23 @@
       } catch (e) {}
     }
 
+    /* 每首歌响度记忆：读写 AGC 学到的增益，切歌时恢复 */
+    function getGain() { return smoothGain; }
+    function setGain(v) {
+      v = clamp(Number(v) || 1, 0.25, 4);
+      smoothGain = v;
+      try {
+        agcGain.gain.setTargetAtTime(v, ctx.currentTime, 0.05);
+      } catch (e) {}
+    }
+
     return {
       connectFrom: connectFrom,
       setEnabled: setEnabled,
       setWet: setWet,
       resetAgc: resetAgc,
+      getGain: getGain,
+      setGain: setGain,
       stop: stopAgc,
       get config() { return cfg; },
       get gain() { return smoothGain; },

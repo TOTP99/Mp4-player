@@ -41,6 +41,11 @@ function ensureAudioEnhance() {
     if (audioEnhancer) {
       audioEnhancer.setEnabled(!!audioEnhanceOn);
       audioEnhancer.setWet(audioEnhanceOn ? 1 : 0);
+      // 补恢复：增强器刚建好时应用待恢复的响度
+      if (_pendingGainRestore != null && typeof audioEnhancer.setGain === 'function') {
+        try { audioEnhancer.setGain(_pendingGainRestore); } catch {}
+        _pendingGainRestore = null;
+      }
     }
   } catch (e) {
     console.warn('ensureAudioEnhance', e);
@@ -50,6 +55,29 @@ function ensureAudioEnhance() {
 function resetAudioEnhanceAgc() {
   try {
     if (audioEnhancer) audioEnhancer.resetAgc();
+  } catch {}
+}
+
+/* 每首歌响度记忆 */
+async function saveGainForFile(file, gain) {
+  try {
+    const prev = (await loadState()) || {};
+    const gainByFile = prev.gainByFile && typeof prev.gainByFile === 'object' ? { ...prev.gainByFile } : {};
+    gainByFile[file] = gain;
+    await idbSet('state', 'playback', { ...prev, gainByFile });
+  } catch {}
+}
+let _pendingGainRestore = null;
+async function restoreGainForFile(file) {
+  try {
+    const st = (await loadState()) || {};
+    const g = st.gainByFile && typeof st.gainByFile[file] === 'number' ? st.gainByFile[file] : null;
+    if (g == null) return;
+    if (audioEnhancer && typeof audioEnhancer.setGain === 'function') {
+      audioEnhancer.setGain(g);
+    } else {
+      _pendingGainRestore = g; // 增强器还没建好，等 ensure 后恢复
+    }
   } catch {}
 }
 
@@ -118,10 +146,19 @@ async function flushState() {
     const byFile =
       prev.byFile && typeof prev.byFile === 'object' ? { ...prev.byFile } : {};
     byFile[file] = time;
+    // 每首歌响度记忆：存 AGC 学到的增益
+    const gainByFile =
+      prev.gainByFile && typeof prev.gainByFile === 'object' ? { ...prev.gainByFile } : {};
+    try {
+      if (audioEnhancer && typeof audioEnhancer.getGain === 'function') {
+        gainByFile[file] = audioEnhancer.getGain();
+      }
+    } catch {}
     await idbSet('state', 'playback', {
       file,
       time,
-      byFile
+      byFile,
+      gainByFile
     });
   } catch {}
 }
@@ -199,12 +236,22 @@ const showYT = id => {
  */
 const openLocal = (index, restoreTime) => {
   if (index < 0 || index >= videoList.length) return;
+  // 切歌前：存当前歌的响度
+  try {
+    if (mode === 'local' && currentIndex >= 0 && videoList[currentIndex] && audioEnhancer && typeof audioEnhancer.getGain === 'function') {
+      saveGainForFile(videoList[currentIndex], audioEnhancer.getGain());
+    }
+  } catch {}
   currentIndex = index;
   const file = videoList[index];
 
   showLocal();
   hideVideoError();
   resetAudioEnhanceAgc();
+  // 恢复这首歌的响度记忆（若有）
+  restoreGainForFile(file);
+  // 手动切歌：旧预加载作废
+  if (typeof cancelPrefetch === 'function' && file !== _prefetchFile) cancelPrefetch();
   // 远程地址；crossOrigin 已在 state.js 设置
   player.src = BASE_URL + file;
   nowPlaying.textContent = file;
@@ -328,3 +375,32 @@ const autoAdvance = () => {
   if (randomPlay) playNextRandom();
   else if (sequentialPlay) playNextSequential();
 };
+
+/* ── 低网速优化：顺序播放时预加载下一首 ── */
+let _prefetchVideo = null;
+let _prefetchFile = null;
+function prefetchNext() {
+  if (mode !== 'local' || !videoList.length) return;
+  if (!sequentialPlay && !randomPlay) return;
+  const next = currentIndex + 1 < videoList.length ? currentIndex + 1 : 0;
+  const file = videoList[next];
+  if (!file || file === _prefetchFile) return;
+  // 切掉旧的预加载
+  try { if (_prefetchVideo) { _prefetchVideo.removeAttribute('src'); _prefetchVideo.load(); } } catch {}
+  _prefetchFile = file;
+  try {
+    if (!_prefetchVideo) {
+      _prefetchVideo = document.createElement('video');
+      _prefetchVideo.preload = 'auto';
+      _prefetchVideo.muted = true;
+      _prefetchVideo.style.display = 'none';
+      document.body.appendChild(_prefetchVideo);
+    }
+    _prefetchVideo.src = BASE_URL + file;
+    _prefetchVideo.load();
+  } catch {}
+}
+function cancelPrefetch() {
+  _prefetchFile = null;
+  try { if (_prefetchVideo) { _prefetchVideo.removeAttribute('src'); _prefetchVideo.load(); } } catch {}
+}

@@ -144,6 +144,8 @@ player.addEventListener('timeupdate', () => {
   lastProgressUI = now;
   const pct = player.duration ? (player.currentTime / player.duration) * 100 : 0;
   setProgressUI(pct, player.currentTime, player.duration || 0);
+  // 播到 65% 预加载下一首（顺序/随机模式）
+  if (pct >= 65 && typeof prefetchNext === 'function') prefetchNext();
 });
 player.addEventListener('loadedmetadata', () => {
   setProgressUI(

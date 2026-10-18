@@ -21,6 +21,11 @@ const createCard = name => {
   num.textContent = name.replace(/\.mp4$/i, '');
   thumb.appendChild(num);
 
+  const hoverPlay = document.createElement('div');
+  hoverPlay.className = 'hover-play';
+  hoverPlay.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  thumb.appendChild(hoverPlay);
+
   const label = document.createElement('div');
   label.className = 'name';
   label.textContent = name;
