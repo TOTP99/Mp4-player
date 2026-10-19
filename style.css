@@ -95,43 +95,6 @@ body {
   pointer-events: none;
 }
 
-/* 四角标已移除（商业克制原则） */
-.corner {
-  display: none;
-  width: 16px;
-  height: 16px;
-  pointer-events: none;
-  z-index: 1;
-}
-.corner-tl {
-  top: -1px;
-  left: -1px;
-  border-top: 2px solid var(--gold-bright);
-  border-left: 2px solid var(--gold-bright);
-  border-top-left-radius: 4px;
-}
-.corner-tr {
-  top: -1px;
-  right: -1px;
-  border-top: 2px solid var(--gold-bright);
-  border-right: 2px solid var(--gold-bright);
-  border-top-right-radius: 4px;
-}
-.corner-bl {
-  bottom: -1px;
-  left: -1px;
-  border-bottom: 2px solid var(--gold-bright);
-  border-left: 2px solid var(--gold-bright);
-  border-bottom-left-radius: 4px;
-}
-.corner-br {
-  bottom: -1px;
-  right: -1px;
-  border-bottom: 2px solid var(--gold-bright);
-  border-right: 2px solid var(--gold-bright);
-  border-bottom-right-radius: 4px;
-}
-
 .screen-inner {
   background: #000;
   border: none;
@@ -412,6 +375,14 @@ body {
   animation: cinema-spin 0.8s linear infinite;
   pointer-events: none;
   color: var(--gold-bright);
+}
+/* 长按清进度：按下过程中视觉反馈，提示用户在长按 */
+#refreshBtn.is-holding {
+  color: var(--gold-bright);
+  background: rgba(232, 197, 106, 0.18);
+  border-color: rgba(232, 197, 106, 0.45);
+  transform: scale(0.94);
+  transition: color 0.15s, background 0.15s, border-color 0.15s, transform 0.15s;
 }
 @keyframes cinema-spin {
   to {
