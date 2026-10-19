@@ -1,6 +1,11 @@
 /*
  * state.js —— 常量、DOM 引用与全局可变状态
  * 必须最先加载；其它脚本通过顶层变量共享作用域
+ *
+ * 【常用配置】改这里即可：
+ *   MAX      —— 探测上限（文件名须为 1.mp4 ~ MAX.mp4）
+ *   BASE_URL —— 远程视频目录（末尾带 /）
+ * 其余如缩略图清晰度、DB 版本等也在下方。
  */
 const MAX = 56;
 const BASE_URL = 'https://totp99.github.io/source/mp4/';

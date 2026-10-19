@@ -72,9 +72,16 @@ async function restoreGainForFile(file) {
   _pendingGainRestore = null;
   if (!audioEnhanceOn) return; // 增强关闭时不应用增益，否则 AGC 已停、音量会卡在旧值
   try {
-    const st = await loadState();
-    if (tok !== _gainTok) return; // 等待期间又切了歌
-    const g = st.gainByFile && typeof st.gainByFile[file] === 'number' ? st.gainByFile[file] : null;
+    // 优先读内存缓存 _pb（同步）；仅当缓存尚未加载时才走异步 loadState
+    let g = null;
+    if (_pb && _pb.gainByFile && typeof _pb.gainByFile[file] === 'number') {
+      g = _pb.gainByFile[file];
+    } else {
+      const st = await loadState();
+      if (tok !== _gainTok) return; // 等待期间又切了歌
+      g = st.gainByFile && typeof st.gainByFile[file] === 'number' ? st.gainByFile[file] : null;
+    }
+    if (tok !== _gainTok) return;
     if (g == null) return;
     if (audioEnhancer && typeof audioEnhancer.setGain === 'function') {
       audioEnhancer.setGain(g);
@@ -193,6 +200,7 @@ function flushState() {
     loadState().then(() => flushState());
     return;
   }
+  // 只有 loadedmetadata 且已恢复进度后，currentTime 才可信，才更新 byFile/time/gain
   if (_readyFile === file) {
     let time = player.currentTime || 0;
     const dur = player.duration;
@@ -207,6 +215,7 @@ function flushState() {
     }
     lsBackup(_pb);
   }
+  // 始终把当前缓存刷到 IDB（即使本帧未更新进度，也能持久化其它字段如 gainByFile）
   idbSet('state', 'playback', _pb);
 }
 

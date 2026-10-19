@@ -111,8 +111,8 @@ const probeIncremental = async known => {
     stillOk = okList.length;
   }
 
-  // 抽检失败过半 → 缓存可能过期，全量扫
-  if (uniqueSample.length && stillOk < Math.ceil(uniqueSample.length / 2)) {
+  // 抽检失败达到一半或以上 → 缓存可能过期，全量扫（比原先更敏感，减少长期保留失效项）
+  if (uniqueSample.length && stillOk <= Math.floor(uniqueSample.length / 2)) {
     return probeAll();
   }
 

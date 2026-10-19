@@ -461,7 +461,7 @@ document.addEventListener('keydown', e => {
   }
 });
 
-/* 长按刷新键：全部歌曲进度清零，从头播放 */
+/* 长按刷新键：全部歌曲进度清零，从头播放（按钮 title 已提示「长按清零全部进度」） */
 async function resetAllProgress() {
   try {
     const st = await loadState(); // 内存缓存：必须改缓存本身，否则下次存档会把旧进度写回来
@@ -477,10 +477,15 @@ async function resetAllProgress() {
   let pressTimer = null;
   let longPressed = false;
   const LONG_MS = 600;
+  const clearHolding = () => {
+    refreshBtn.classList.remove('is-holding');
+  };
   refreshBtn.addEventListener('pointerdown', () => {
     longPressed = false;
+    refreshBtn.classList.add('is-holding');
     pressTimer = setTimeout(async () => {
       longPressed = true;
+      clearHolding();
       try { if (navigator.vibrate) navigator.vibrate(30); } catch {}
       if (confirm('将全部歌曲的播放进度清零，从头开始播放？')) {
         const ok = await resetAllProgress();
@@ -490,6 +495,7 @@ async function resetAllProgress() {
   });
   const cancelPress = () => {
     if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    clearHolding();
   };
   refreshBtn.addEventListener('pointerup', cancelPress);
   refreshBtn.addEventListener('pointerleave', cancelPress);
